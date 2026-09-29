@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - Conjuntos de datos{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Catalogo</p>
+    <h1>Conjuntos de datos</h1>
+</section>
+
+<section class="split-layout">
+    <form class="panel form-panel" method="post">
+        <h2>Nuevo conjunto de datos</h2>
+        <label>
+            Nombre
+            <input type="text" name="nombre" required maxlength="120" placeholder="Ej. Contrataciones menores de servicios">
+        </label>
+        <label>
+            Descripcion
+            <textarea name="descripcion" rows="5" placeholder="Descripcion breve"></textarea>
+        </label>
+        <button type="submit">Crear conjunto de datos</button>
+    </form>
+
+    <section class="panel">
+        <div class="section-title">
+            <h2>Conjuntos de datos registrados</h2>
+            <span>{{ tipos|length }}</span>
+        </div>
+
+        {% if tipos %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Descripcion</th>
+                            <th>Estructura</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tipo in tipos %}
+                            <tr>
+                                <td>{{ tipo.nombre }}</td>
+                                <td>{{ tipo.descripcion or "Sin descripcion" }}</td>
+                                <td>{{ tipo.total_conjuntos }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="empty-state">Todavia no hay conjuntos de datos registrados.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

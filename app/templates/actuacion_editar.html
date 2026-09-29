@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - Editar trámite o actuación{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Tramitacion</p>
+    <h1>Editar trámite o actuación</h1>
+    <p class="hero-copy">
+        Actualiza el nombre, la fase y la descripción del trámite o actuación seleccionado.
+    </p>
+</section>
+
+<section class="wide-layout">
+    <form
+        class="panel form-panel"
+        method="post"
+        action="{{ url_for('navegacion.editar_actuacion', id_actuacion=actuacion.id) }}"
+    >
+        <h2>{{ actuacion.nombre }}</h2>
+        <label>
+            Nombre
+            <input
+                type="text"
+                name="nombre"
+                required
+                maxlength="120"
+                value="{{ actuacion.nombre }}"
+            >
+        </label>
+        <label>
+            Descripcion
+            <textarea name="descripcion" rows="7">{{ actuacion.descripcion or "" }}</textarea>
+        </label>
+        <label>
+            Fase
+            <select name="fase" required>
+                {% for fase in fases %}
+                    <option value="{{ fase }}" {% if fase == actuacion.fase %}selected{% endif %}>
+                        {{ fase }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="form-actions">
+            <button type="submit">Guardar cambios</button>
+            <a class="secondary-link" href="{{ url_for('navegacion.actuaciones') }}">
+                Volver
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}

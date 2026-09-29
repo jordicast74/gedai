@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - {{ titulo_documento }}{% endblock %}
+
+{% block content %}
+<section class="document-page">
+    <header class="document-header">
+        <p class="eyebrow">Documento del expediente {{ expediente.id }}</p>
+        <h1>{{ titulo_documento }}</h1>
+        <p>{{ expediente.nombre }} · {{ actuacion }}</p>
+    </header>
+
+    {% if campos_documento %}
+        <div class="document-fields">
+            {% for campo in campos_documento %}
+                <article class="document-field">
+                    <h2>{{ campo.nombre }}</h2>
+                    {% if campo.dato_sensible %}
+                        <p class="sensitive-note"><em>dato sensible</em></p>
+                    {% elif campo.tipo_dato == "texto_largo" %}
+                        <div class="document-rich-text">{{ campo.valor|rich_text }}</div>
+                    {% else %}
+                        <p>{{ campo.valor or "Sin valor" }}</p>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-state">No hay campos marcados como documento en este trámite o actuación.</p>
+    {% endif %}
+
+    <div class="form-actions document-footer-actions">
+        <button type="button">PDF</button>
+        <button type="button">Firmar</button>
+    </div>
+</section>
+{% endblock %}

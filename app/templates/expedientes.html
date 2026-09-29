@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - Expedientes{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Tramitacion</p>
+    <h1>Expedientes</h1>
+    <p class="hero-copy">
+        Inicia un expediente, guarda sus datos comunes y completa cada trámite o actuación por separado.
+    </p>
+</section>
+
+<section class="split-layout">
+    <form class="panel form-panel" method="post">
+        <h2>Iniciar expediente</h2>
+        <label>
+            Conjunto de datos del expediente
+            <select name="id_tipo" required>
+                <option value="">Selecciona un conjunto de datos</option>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        {% if conjuntos_comunes %}
+            <section class="form-section">
+                <div class="section-title compact-title">
+                    <h3>Datos comunes</h3>
+                    <span>{{ conjuntos_comunes|length }}</span>
+                </div>
+                <div class="generated-form">
+                    {% for conjunto in conjuntos_comunes %}
+                        <label>
+                            {{ conjunto.nombre }}
+                            <input
+                                type="text"
+                                name="comun_{{ conjunto.id }}"
+                                placeholder="{{ conjunto.descripcion or 'Valor' }}"
+                            >
+                        </label>
+                    {% endfor %}
+                </div>
+            </section>
+        {% else %}
+            <p class="empty-state">Todavia no hay datos comunes del expediente definidos.</p>
+        {% endif %}
+
+        <button type="submit" {% if not tipos %}disabled{% endif %}>Crear expediente</button>
+    </form>
+
+    <section class="panel">
+        <div class="section-title">
+            <h2>Expedientes registrados</h2>
+            <span>{{ expedientes|length }}</span>
+        </div>
+
+        {% if expedientes %}
+            <div class="list-stack">
+                {% for expediente in expedientes %}
+                    <article class="data-row">
+                        <div class="data-row-main">
+                            <div>
+                                <h3>{{ expediente.nombre }}</h3>
+                                <p>{{ expediente.tipo_nombre }}</p>
+                            </div>
+                            <span class="pill">{{ expediente.estado }}</span>
+                        </div>
+                        <div class="meta-grid">
+                            <span>Datos comunes: {{ expediente.valores_comunes }}</span>
+                            <span>Datos de trámites o actuaciones: {{ expediente.valores_especificos }}</span>
+                            <span>Actualizado: {{ expediente.fecha_actualizacion }}</span>
+                        </div>
+                        <a
+                            class="secondary-link"
+                            href="{{ url_for('navegacion.expediente_detalle', id_expediente=expediente.id) }}"
+                        >
+                            Abrir expediente
+                        </a>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">Todavia no hay expedientes iniciados.</p>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

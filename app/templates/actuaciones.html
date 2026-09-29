@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - Trámite o actuación{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Tramitacion</p>
+    <h1>Trámite o actuación</h1>
+    <p class="hero-copy">
+        Gestiona los trámites o actuaciones y ubícalos en la fase correspondiente del procedimiento.
+    </p>
+</section>
+
+<section class="split-layout">
+    <form class="panel form-panel" method="post">
+        <h2>Nuevo trámite o actuación</h2>
+        <label>
+            Nombre
+            <input type="text" name="nombre" required maxlength="120" placeholder="Ej. Aprobación del gasto">
+        </label>
+        <label>
+            Fase
+            <select name="fase" required>
+                {% for fase in fases %}
+                    <option value="{{ fase }}">{{ fase }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Descripcion
+            <textarea name="descripcion" rows="5" placeholder="Descripcion breve"></textarea>
+        </label>
+        <button type="submit">Crear trámite o actuación</button>
+    </form>
+
+    <section class="panel">
+        <div class="section-title">
+            <h2>Trámites o actuaciones registrados</h2>
+            <span>{{ actuaciones|length }}</span>
+        </div>
+
+        {% if actuaciones %}
+            <form
+                id="orden-actuaciones"
+                method="post"
+                action="{{ url_for('navegacion.reordenar_actuaciones_ruta') }}"
+            ></form>
+            <div class="table-wrap">
+                <table class="reorder-table">
+                    <thead>
+                        <tr>
+                            <th>Orden</th>
+                            <th>Nombre</th>
+                            <th>Fase</th>
+                            <th>Eliminar</th>
+                            <th>Editar</th>
+                        </tr>
+                    </thead>
+                    <tbody data-reorder-list>
+                        {% for actuacion in actuaciones %}
+                            <tr draggable="true" data-id="{{ actuacion.id }}">
+                                <td class="order-cell">
+                                    <span class="drag-handle">Mover</span>
+                                    <input
+                                        type="hidden"
+                                        name="orden"
+                                        value="{{ actuacion.id }}"
+                                        form="orden-actuaciones"
+                                    >
+                                </td>
+                                <td>
+                                    <strong>{{ actuacion.nombre }}</strong>
+                                    <p class="table-description">{{ actuacion.descripcion or "Sin descripcion" }}</p>
+                                </td>
+                                <td><span class="pill">{{ actuacion.fase }}</span></td>
+                                <td>
+                                    <form
+                                        class="table-action-form"
+                                        method="post"
+                                        action="{{ url_for('navegacion.borrar_actuacion', id_actuacion=actuacion.id) }}"
+                                        onsubmit="return confirm('¿Eliminar este trámite o actuación? La estructura asociada se reasignará a General.');"
+                                    >
+                                        <button class="danger-button" type="submit">Eliminar</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <a
+                                        class="secondary-link"
+                                        href="{{ url_for('navegacion.editar_actuacion', id_actuacion=actuacion.id) }}"
+                                    >
+                                        Editar
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-actions table-actions">
+                <button type="submit" form="orden-actuaciones">Guardar orden</button>
+            </div>
+        {% else %}
+            <p class="empty-state">Todavia no hay trámites o actuaciones registrados.</p>
+        {% endif %}
+    </section>
+</section>
+
+<script>
+    const reorderList = document.querySelector("[data-reorder-list]");
+
+    if (reorderList) {
+        let draggedRow = null;
+
+        reorderList.addEventListener("dragstart", (event) => {
+            draggedRow = event.target.closest("tr");
+            if (!draggedRow) {
+                return;
+            }
+            draggedRow.classList.add("dragging");
+            event.dataTransfer.effectAllowed = "move";
+        });
+
+        reorderList.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            if (!draggedRow) {
+                return;
+            }
+
+            const rows = [...reorderList.querySelectorAll("tr:not(.dragging)")];
+            const nextRow = rows.find((row) => {
+                const box = row.getBoundingClientRect();
+                return event.clientY <= box.top + box.height / 2;
+            });
+
+            reorderList.insertBefore(draggedRow, nextRow || null);
+        });
+
+        reorderList.addEventListener("dragend", () => {
+            if (draggedRow) {
+                draggedRow.classList.remove("dragging");
+            }
+            draggedRow = null;
+        });
+    }
+</script>
+{% endblock %}

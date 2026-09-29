@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - Inicio{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <p class="eyebrow">Gestor de datos interoperables</p>
+    <h1>GEDAI</h1>
+    <p class="hero-copy">Expedientes, conjuntos de datos, estructura y trámites en una misma aplicacion web.</p>
+</section>
+
+<section class="stats-grid" aria-label="Resumen">
+    <article class="stat-card">
+        <span>{{ resumen.expedientes }}</span>
+        <p>Expedientes</p>
+    </article>
+    <article class="stat-card">
+        <span>{{ resumen.tipos }}</span>
+        <p>Conjuntos de datos</p>
+    </article>
+    <article class="stat-card">
+        <span>{{ resumen.conjuntos }}</span>
+        <p>Estructura</p>
+    </article>
+    <article class="stat-card">
+        <span>{{ resumen.conjuntos_comunes }}</span>
+        <p>Datos comunes</p>
+    </article>
+    <article class="stat-card">
+        <span>{{ resumen.actuaciones }}</span>
+        <p>Trámites o actuaciones</p>
+    </article>
+</section>
+
+<section class="action-grid">
+    <a class="action-panel" href="{{ url_for('navegacion.tipos') }}">
+        <strong>Conjuntos de datos</strong>
+        <span>Crear y consultar conjuntos de datos.</span>
+    </a>
+    <a class="action-panel" href="{{ url_for('navegacion.conjuntos') }}">
+        <strong>Estructura</strong>
+        <span>Definir datos comunes y campos por trámite.</span>
+    </a>
+    <a class="action-panel" href="{{ url_for('navegacion.expedientes') }}">
+        <strong>Expedientes</strong>
+        <span>Iniciar expedientes y completar sus trámites.</span>
+    </a>
+    <a class="action-panel" href="{{ url_for('navegacion.interoperabilidad') }}">
+        <strong>Importar/Exportar</strong>
+        <span>Reutilizar catalogos mediante archivos JSON.</span>
+    </a>
+</section>
+{% endblock %}

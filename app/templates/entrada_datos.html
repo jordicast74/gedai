@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - Entrar datos{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Formulario dinamico</p>
+    <h1>Entrar datos</h1>
+</section>
+
+<section class="wide-layout">
+    <form class="panel compact-form" method="get">
+        <label>
+            Conjunto de datos
+            <select name="id_tipo" required>
+                <option value="">Selecciona un conjunto de datos</option>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo.id }}" {% if tipo_seleccionado and tipo.id == tipo_seleccionado.id %}selected{% endif %}>
+                        {{ tipo.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+        {% if tipo_seleccionado %}
+            <label>
+                Trámite o actuación
+                <select name="actuacion" required>
+                    <option value="">Selecciona un trámite o actuación</option>
+                    {% for actuacion in actuaciones %}
+                        <option value="{{ actuacion }}" {% if actuacion == actuacion_seleccionada %}selected{% endif %}>
+                            {{ actuacion }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+        {% endif %}
+        <button type="submit">
+            {% if tipo_seleccionado %}Cargar trámite o actuación{% else %}Cargar trámites{% endif %}
+        </button>
+    </form>
+
+    {% if tipo_seleccionado and actuaciones and not actuacion_seleccionada %}
+        <section class="panel">
+            <div class="section-title">
+                <h2>Trámites o actuaciones disponibles</h2>
+                <span>{{ actuaciones|length }}</span>
+            </div>
+            <div class="stage-grid">
+                {% for actuacion in actuaciones %}
+                    <a
+                        class="stage-link"
+                        href="{{ url_for('navegacion.entrada_datos', id_tipo=tipo_seleccionado.id, actuacion=actuacion) }}"
+                    >
+                        {{ actuacion }}
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if tipo_seleccionado and actuacion_seleccionada %}
+        <form class="panel form-panel" method="post">
+            <input type="hidden" name="id_tipo" value="{{ tipo_seleccionado.id }}">
+            <input type="hidden" name="actuacion" value="{{ actuacion_seleccionada }}">
+            <div class="section-title">
+                <div>
+                    <h2>{{ actuacion_seleccionada }}</h2>
+                    <p class="section-subtitle">{{ tipo_seleccionado.nombre }}</p>
+                </div>
+                <span>{{ conjuntos_comunes|length + conjuntos|length }} campos</span>
+            </div>
+
+            {% if conjuntos_comunes %}
+                <section class="form-section">
+                    <div class="section-title compact-title">
+                        <h3>Datos generales del expediente</h3>
+                        <span>{{ conjuntos_comunes|length }}</span>
+                    </div>
+                    <div class="generated-form">
+                        {% for conjunto in conjuntos_comunes %}
+                            <label>
+                                {{ conjunto.nombre }}
+                                <input
+                                    type="text"
+                                    name="comun_{{ conjunto.id }}"
+                                    placeholder="{{ conjunto.descripcion or 'Valor' }}"
+                                >
+                            </label>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+
+            {% if conjuntos %}
+                <section class="form-section">
+                    <div class="section-title compact-title">
+                        <h3>Datos del trámite o actuación</h3>
+                        <span>{{ conjuntos|length }}</span>
+                    </div>
+                    <div class="generated-form">
+                        {% for conjunto in conjuntos %}
+                            <label>
+                                {{ conjunto.nombre }}
+                                <input
+                                    type="text"
+                                    name="dato_{{ conjunto.id }}"
+                                    placeholder="{{ conjunto.descripcion or 'Valor' }}"
+                                >
+                            </label>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+
+            {% if conjuntos or conjuntos_comunes %}
+                <button type="submit">Enviar datos</button>
+            {% else %}
+                <p class="empty-state">Este trámite o actuación todavia no tiene estructura asociada.</p>
+            {% endif %}
+        </form>
+    {% elif tipo_seleccionado and not actuaciones %}
+        <section class="panel">
+            {% if conjuntos_comunes %}
+                <div class="section-title">
+                    <h2>Datos generales del expediente</h2>
+                    <span>{{ conjuntos_comunes|length }}</span>
+                </div>
+                <div class="generated-form">
+                    {% for conjunto in conjuntos_comunes %}
+                        <label>
+                            {{ conjunto.nombre }}
+                            <input
+                                type="text"
+                                name="comun_{{ conjunto.id }}"
+                                placeholder="{{ conjunto.descripcion or 'Valor' }}"
+                            >
+                        </label>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="empty-state">Este conjunto de datos todavia no tiene trámites o actuaciones asociados.</p>
+            {% endif %}
+        </section>
+    {% endif %}
+
+    {% if datos_recibidos %}
+        <section class="panel">
+            <div class="section-title">
+                <h2>Datos enviados</h2>
+                <span>{{ datos_recibidos|length }}</span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nivel</th>
+                            <th>Trámite o actuación</th>
+                            <th>Estructura</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dato in datos_recibidos %}
+                            <tr>
+                                <td>{{ dato.nivel }}</td>
+                                <td>{{ dato.actuacion }}</td>
+                                <td>{{ dato.conjunto }}</td>
+                                <td>{{ dato.valor or "Sin valor" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+</section>
+{% endblock %}

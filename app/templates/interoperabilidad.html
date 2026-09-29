@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - Importar y exportar{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Interoperabilidad</p>
+    <h1>Importar y exportar</h1>
+    <p class="hero-copy">
+        Reutiliza procedimientos, fases, trámites o actuaciones y datasets entre instalaciones mediante archivos JSON.
+    </p>
+</section>
+
+<section class="split-layout">
+    <form class="panel form-panel" method="post" enctype="multipart/form-data">
+        <h2>Importar JSON</h2>
+
+        <label>
+            Archivo JSON
+            <input type="file" name="json_file" accept="application/json,.json">
+        </label>
+
+        <label>
+            O pegar JSON
+            <textarea
+                name="json_text"
+                rows="12"
+                placeholder="Pega aqui el contenido JSON"
+            ></textarea>
+        </label>
+
+        <button type="submit">Importar catalogo</button>
+
+        {% if resultado_importacion %}
+            <div class="result-grid">
+                <span>Procedimientos creados: {{ resultado_importacion.tipos_creados }}</span>
+                <span>Procedimientos actualizados: {{ resultado_importacion.tipos_actualizados }}</span>
+                <span>Trámites o actuaciones creados: {{ resultado_importacion.actuaciones_creadas }}</span>
+                <span>Trámites o actuaciones actualizados: {{ resultado_importacion.actuaciones_actualizadas }}</span>
+                <span>Datos comunes creados: {{ resultado_importacion.conjuntos_comunes_creados }}</span>
+                <span>Datos comunes actualizados: {{ resultado_importacion.conjuntos_comunes_actualizados }}</span>
+                <span>Elementos de estructura creados: {{ resultado_importacion.conjuntos_creados }}</span>
+                <span>Elementos de estructura actualizados: {{ resultado_importacion.conjuntos_actualizados }}</span>
+            </div>
+        {% endif %}
+    </form>
+
+    <section class="panel">
+        <div class="section-title">
+            <h2>Exportar JSON</h2>
+            <span>{{ tipos|length }} procedimientos</span>
+        </div>
+
+        <div class="export-actions">
+            <a class="button-link" href="{{ url_for('navegacion.descargar_catalogo') }}">
+                Descargar todo el catalogo
+            </a>
+        </div>
+
+        {% if tipos %}
+            <div class="list-stack export-list">
+                {% for tipo in tipos %}
+                    <article class="data-row">
+                        <div class="data-row-main">
+                            <div>
+                                <h3>{{ tipo.nombre }}</h3>
+                                <p>{{ tipo.descripcion or "Sin descripcion" }}</p>
+                            </div>
+                            <span class="pill">{{ tipo.total_conjuntos }} elementos</span>
+                        </div>
+                        <a
+                            class="secondary-link"
+                            href="{{ url_for('navegacion.descargar_tipo', id_tipo=tipo.id) }}"
+                        >
+                            Descargar este procedimiento
+                        </a>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">Todavia no hay procedimientos para exportar.</p>
+        {% endif %}
+    </section>
+</section>
+
+<section class="panel json-example">
+    <div class="section-title">
+        <h2>Formato esperado</h2>
+        <span>JSON</span>
+    </div>
+    <pre><code>{{ ejemplo_json }}</code></pre>
+</section>
+{% endblock %}

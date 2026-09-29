@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - {{ expediente.nombre }}{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Expediente {{ expediente.id }}</p>
+    <h1>{{ expediente.nombre }}</h1>
+    <p class="hero-copy">{{ expediente.tipo_nombre }}</p>
+</section>
+
+<section class="split-layout">
+    <form class="panel form-panel" method="post">
+        <input type="hidden" name="accion" value="guardar_comunes">
+        <input type="hidden" name="actuacion" value="{{ actuacion_seleccionada }}">
+        <div class="section-title">
+            <h2>Datos comunes del expediente</h2>
+            <span>{{ conjuntos_comunes|length }}</span>
+        </div>
+
+        {% if conjuntos_comunes %}
+            <div class="generated-form">
+                {% for conjunto in conjuntos_comunes %}
+                    <label>
+                        {{ conjunto.nombre }}
+                        <input
+                            type="text"
+                            name="comun_{{ conjunto.id }}"
+                            value="{{ valores_comunes.get(conjunto.id, '') }}"
+                            placeholder="{{ conjunto.descripcion or 'Valor' }}"
+                        >
+                    </label>
+                {% endfor %}
+            </div>
+            <button type="submit">Guardar datos comunes</button>
+        {% else %}
+            <p class="empty-state">No hay datos comunes definidos.</p>
+        {% endif %}
+    </form>
+
+    <section class="panel">
+        <div class="section-title">
+            <h2>Trámites o actuaciones</h2>
+            <span>{{ actuaciones|length }}</span>
+        </div>
+
+        {% if progreso_actuaciones %}
+            <div class="phase-filter" aria-label="Filtrar trámites por fase">
+                {% for fase in fases_filtro %}
+                    <label class="phase-toggle">
+                        <input type="checkbox" value="{{ fase.slug }}" data-phase-toggle checked>
+                        <span>{{ fase.nombre }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+            <div class="stage-grid" data-stage-grid>
+                {% for progreso in progreso_actuaciones %}
+                    <a
+                        class="stage-link {% if progreso.actuacion == actuacion_seleccionada %}active{% endif %}"
+                        href="{{ url_for('navegacion.expediente_detalle', id_expediente=expediente.id, actuacion=progreso.actuacion) }}"
+                        data-stage-fase="{{ progreso.fase_slug }}"
+                    >
+                        <span>{{ progreso.actuacion }}</span>
+                        <small>{{ progreso.fase }} · {{ progreso.campos_rellenados or 0 }}/{{ progreso.total_campos }} campos</small>
+                    </a>
+                {% endfor %}
+            </div>
+            <p class="empty-state is-hidden" data-stage-empty-filter>
+                No hay trámites visibles con las fases seleccionadas.
+            </p>
+        {% else %}
+            <p class="empty-state">Este conjunto de datos todavia no tiene trámites o actuaciones definidos.</p>
+        {% endif %}
+    </section>
+</section>
+
+{% if actuacion_seleccionada %}
+    <form class="panel form-panel detail-panel" method="post">
+        <input type="hidden" name="accion" value="guardar_actuacion">
+        <input type="hidden" name="actuacion" value="{{ actuacion_seleccionada }}">
+        <div class="section-title">
+            <div>
+                <h2>{{ actuacion_seleccionada }}</h2>
+                <p class="section-subtitle">Datos especificos del trámite o actuación</p>
+            </div>
+            <span>{{ conjuntos|length }} campos</span>
+        </div>
+
+        {% if conjuntos %}
+            <div class="generated-form">
+                {% for conjunto in conjuntos %}
+                    {% set dato = valores_actuacion.get(conjunto.id) %}
+                    {% set valor_actual = dato.valor if dato else '' %}
+                    {% set documento_marcado = dato.documento if dato else conjunto.documento %}
+                    {% set dato_sensible_marcado = dato.dato_sensible if dato else conjunto.dato_sensible %}
+                    <section class="dataset-field">
+                        {% if conjunto.tipo_dato == "texto_largo" %}
+                            <div class="rich-field">
+                                <span class="field-label">{{ conjunto.nombre }}</span>
+                                <div class="rich-toolbar" aria-label="Formato del texto">
+                                    <button type="button" data-command="bold" title="Negrita">B</button>
+                                    <button type="button" data-command="italic" title="Cursiva">I</button>
+                                    <button type="button" data-command="underline" title="Subrayado">U</button>
+                                    <button type="button" data-command="insertUnorderedList" title="Lista">•</button>
+                                    <button type="button" data-command="insertOrderedList" title="Lista numerada">1.</button>
+                                </div>
+                                <div
+                                    class="rich-editor"
+                                    contenteditable="true"
+                                    data-rich-editor
+                                    data-target="dato_{{ conjunto.id }}"
+                                    role="textbox"
+                                    aria-multiline="true"
+                                    aria-label="{{ conjunto.nombre }}"
+                                    data-placeholder="{{ conjunto.descripcion or 'Valor' }}"
+                                >{{ valor_actual|rich_text }}</div>
+                                <textarea
+                                    class="rich-value"
+                                    id="dato_{{ conjunto.id }}"
+                                    name="dato_{{ conjunto.id }}"
+                                >{{ valor_actual }}</textarea>
+                            </div>
+                        {% elif conjunto.tipo_dato == "numerico" %}
+                            <label>
+                                {{ conjunto.nombre }}
+                                <input
+                                    type="number"
+                                    step="any"
+                                    name="dato_{{ conjunto.id }}"
+                                    value="{{ valor_actual }}"
+                                    placeholder="{{ conjunto.descripcion or 'Valor' }}"
+                                >
+                            </label>
+                        {% elif conjunto.tipo_dato == "fecha" %}
+                            <label>
+                                {{ conjunto.nombre }}
+                                <input
+                                    type="date"
+                                    name="dato_{{ conjunto.id }}"
+                                    value="{{ valor_actual }}"
+                                >
+                            </label>
+                        {% else %}
+                            <label>
+                                {{ conjunto.nombre }}
+                                <input
+                                    type="text"
+                                    name="dato_{{ conjunto.id }}"
+                                    value="{{ valor_actual }}"
+                                    placeholder="{{ conjunto.descripcion or 'Valor' }}"
+                                >
+                            </label>
+                        {% endif %}
+                        <div class="dataset-flags" aria-label="Características del campo">
+                            <label class="check-row compact">
+                                <input
+                                    type="checkbox"
+                                    name="documento_{{ conjunto.id }}"
+                                    {% if documento_marcado %}checked{% endif %}
+                                >
+                                <span>Documento</span>
+                            </label>
+                            <label class="check-row compact">
+                                <input
+                                    type="checkbox"
+                                    name="dato_sensible_{{ conjunto.id }}"
+                                    {% if dato_sensible_marcado %}checked{% endif %}
+                                >
+                                <span>Dato sensible</span>
+                            </label>
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
+            <div class="form-actions document-actions">
+                <button type="submit">Guardar trámite o actuación</button>
+                <label class="document-title-field">
+                    Título del documento
+                    <input
+                        type="text"
+                        name="titulo_documento"
+                        maxlength="180"
+                        placeholder="Título del documento"
+                    >
+                </label>
+                <button
+                    type="submit"
+                    formaction="{{ url_for('navegacion.expediente_documento', id_expediente=expediente.id) }}"
+                    formmethod="post"
+                    formtarget="_blank"
+                >
+                    Ver documento
+                </button>
+            </div>
+        {% else %}
+            <p class="empty-state">Este trámite o actuación no tiene estructura asociada.</p>
+        {% endif %}
+    </form>
+{% endif %}
+
+<script>
+    const phaseToggles = document.querySelectorAll("[data-phase-toggle]");
+    const stageLinks = document.querySelectorAll("[data-stage-fase]");
+    const stageEmptyFilter = document.querySelector("[data-stage-empty-filter]");
+    const richEditors = document.querySelectorAll("[data-rich-editor]");
+
+    function updateStageVisibility() {
+        if (!phaseToggles.length || !stageLinks.length) {
+            return;
+        }
+
+        const activePhases = new Set(
+            [...phaseToggles]
+                .filter((toggle) => toggle.checked)
+                .map((toggle) => toggle.value)
+        );
+        let visibleCount = 0;
+
+        stageLinks.forEach((link) => {
+            const visible = activePhases.has(link.dataset.stageFase);
+            link.classList.toggle("is-hidden", !visible);
+            if (visible) {
+                visibleCount += 1;
+            }
+        });
+
+        if (stageEmptyFilter) {
+            stageEmptyFilter.classList.toggle("is-hidden", visibleCount > 0);
+        }
+    }
+
+    phaseToggles.forEach((toggle) => {
+        toggle.addEventListener("change", updateStageVisibility);
+    });
+    updateStageVisibility();
+
+    function syncRichEditor(editor) {
+        const target = document.getElementById(editor.dataset.target);
+        if (!target) {
+            return;
+        }
+
+        const empty = editor.textContent.trim() === "";
+        target.value = empty ? "" : editor.innerHTML.trim();
+    }
+
+    richEditors.forEach((editor) => {
+        syncRichEditor(editor);
+        editor.addEventListener("input", () => syncRichEditor(editor));
+    });
+
+    document.querySelectorAll(".rich-toolbar button").forEach((button) => {
+        button.addEventListener("click", () => {
+            const field = button.closest(".rich-field");
+            const editor = field ? field.querySelector("[data-rich-editor]") : null;
+            if (!editor) {
+                return;
+            }
+
+            editor.focus();
+            document.execCommand(button.dataset.command, false, null);
+            syncRichEditor(editor);
+        });
+    });
+
+    document.querySelectorAll("form").forEach((form) => {
+        form.addEventListener("submit", () => {
+            richEditors.forEach((editor) => syncRichEditor(editor));
+        });
+    });
+</script>
+{% endblock %}

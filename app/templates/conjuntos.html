@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - Datasets{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Datos</p>
+    <h1>Datasets</h1>
+    <p class="hero-copy">
+        Define los datos comunes del expediente y los campos propios de cada procedimiento.
+    </p>
+</section>
+
+<section class="split-layout">
+    <form class="panel form-panel" method="post">
+        <input type="hidden" name="formulario" value="comun">
+        <h2>Dato común del expediente</h2>
+        <label>
+            Nombre
+            <input
+                type="text"
+                name="nombre"
+                required
+                maxlength="120"
+                placeholder="Ej. Título del expediente"
+            >
+        </label>
+        <label>
+            Descripcion
+            <textarea name="descripcion" rows="4" placeholder="Descripcion breve"></textarea>
+        </label>
+
+        <button type="submit">Crear dato común</button>
+    </form>
+
+    <section class="panel">
+        <div class="section-title">
+            <h2>Datos comunes del expediente</h2>
+            <span>{{ conjuntos_comunes|length }}</span>
+        </div>
+
+        {% if conjuntos_comunes %}
+            <div class="list-stack">
+                {% for conjunto in conjuntos_comunes %}
+                    <article class="data-row">
+                        <div class="data-row-main">
+                            <div>
+                                <h3>{{ conjunto.nombre }}</h3>
+                                <p>{{ conjunto.descripcion or "Sin descripcion" }}</p>
+                            </div>
+                            <span class="pill">Expediente</span>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="empty-state">Todavia no hay datos comunes del expediente.</p>
+        {% endif %}
+    </section>
+</section>
+
+<section class="split-layout">
+    <form class="panel form-panel" method="post">
+        <input type="hidden" name="formulario" value="especifico">
+        <h2>Nuevo campo de dataset</h2>
+        <label>
+            Nombre
+            <input type="text" name="nombre" required maxlength="120" placeholder="Ej. Unidad promotora">
+        </label>
+        <label>
+            Procedimiento
+            <select name="id_tipo" required>
+                <option value="">Selecciona un procedimiento</option>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Trámite o actuación
+            <select name="id_actuacion" required>
+                <option value="">Selecciona un trámite o actuación</option>
+                {% for actuacion in actuaciones %}
+                    <option value="{{ actuacion.id }}">{{ actuacion.fase }} - {{ actuacion.nombre }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Tipo de dato
+            <select name="tipo_dato" required>
+                {% for valor, etiqueta in tipos_dato %}
+                    <option value="{{ valor }}">{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Descripcion
+            <textarea name="descripcion" rows="5" placeholder="Descripcion breve"></textarea>
+        </label>
+        <fieldset class="checkbox-group">
+            <legend>Características</legend>
+            <label class="check-row">
+                <input type="checkbox" name="documento">
+                <span>Documento</span>
+            </label>
+            <label class="check-row">
+                <input type="checkbox" name="dato_sensible">
+                <span>Dato sensible</span>
+            </label>
+        </fieldset>
+
+        <button type="submit" {% if not tipos or not actuaciones %}disabled{% endif %}>
+            Crear campo
+        </button>
+        {% if not actuaciones %}
+            <p class="muted">Primero crea al menos un Trámite o actuación.</p>
+        {% endif %}
+    </form>
+
+    <section class="panel">
+        <div class="section-title">
+            <h2>Campos registrados</h2>
+            <span>{{ conjuntos|length }}</span>
+        </div>
+
+        {% if conjuntos %}
+            <form method="post" action="{{ url_for('navegacion.reordenar_conjuntos_ruta') }}">
+                <div class="table-wrap">
+                    <table class="reorder-table">
+                        <thead>
+                            <tr>
+                                <th>Orden</th>
+                                <th>Nombre</th>
+                                <th>Procedimiento</th>
+                                <th>Trámite o actuación</th>
+                                <th>Tipo</th>
+                                <th>Documento</th>
+                                <th>Dato sensible</th>
+                                <th>Editar</th>
+                            </tr>
+                        </thead>
+                        <tbody data-reorder-list>
+                            {% for conjunto in conjuntos %}
+                                <tr draggable="true" data-id="{{ conjunto.id }}">
+                                    <td class="order-cell">
+                                        <span class="drag-handle">Mover</span>
+                                        <input type="hidden" name="orden" value="{{ conjunto.id }}">
+                                    </td>
+                                    <td>
+                                        <strong>{{ conjunto.nombre }}</strong>
+                                        <p class="table-description">{{ conjunto.descripcion or "Sin descripcion" }}</p>
+                                    </td>
+                                    <td>{{ conjunto.tipo_nombre }}</td>
+                                    <td>{{ conjunto.actuacion }}</td>
+                                    <td>
+                                        {% for valor, etiqueta in tipos_dato %}
+                                            {% if valor == conjunto.tipo_dato %}{{ etiqueta }}{% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>{{ "Sí" if conjunto.documento else "No" }}</td>
+                                    <td>{{ "Sí" if conjunto.dato_sensible else "No" }}</td>
+                                    <td>
+                                        <a
+                                            class="secondary-link"
+                                            href="{{ url_for('navegacion.editar_conjunto', id_conjunto=conjunto.id) }}"
+                                        >
+                                            Editar
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-actions table-actions">
+                    <button type="submit">Guardar orden</button>
+                </div>
+            </form>
+        {% else %}
+            <p class="empty-state">Todavia no hay campos registrados.</p>
+        {% endif %}
+    </section>
+</section>
+
+<script>
+    const reorderList = document.querySelector("[data-reorder-list]");
+
+    if (reorderList) {
+        let draggedRow = null;
+
+        reorderList.addEventListener("dragstart", (event) => {
+            draggedRow = event.target.closest("tr");
+            if (!draggedRow) {
+                return;
+            }
+            draggedRow.classList.add("dragging");
+            event.dataTransfer.effectAllowed = "move";
+        });
+
+        reorderList.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            if (!draggedRow) {
+                return;
+            }
+
+            const rows = [...reorderList.querySelectorAll("tr:not(.dragging)")];
+            const nextRow = rows.find((row) => {
+                const box = row.getBoundingClientRect();
+                return event.clientY <= box.top + box.height / 2;
+            });
+
+            reorderList.insertBefore(draggedRow, nextRow || null);
+        });
+
+        reorderList.addEventListener("dragend", () => {
+            if (draggedRow) {
+                draggedRow.classList.remove("dragging");
+            }
+            draggedRow = null;
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}GEDAI - Editar campo de dataset{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">Datasets</p>
+    <h1>Editar campo</h1>
+    <p class="hero-copy">
+        Actualiza el campo del dataset y marca si representa un documento o un dato sensible.
+    </p>
+</section>
+
+<section class="wide-layout">
+    <form
+        class="panel form-panel"
+        method="post"
+        action="{{ url_for('navegacion.editar_conjunto', id_conjunto=conjunto.id) }}"
+    >
+        <h2>{{ conjunto.nombre }}</h2>
+        <label>
+            Nombre
+            <input
+                type="text"
+                name="nombre"
+                required
+                maxlength="120"
+                value="{{ conjunto.nombre }}"
+            >
+        </label>
+        <label>
+            Procedimiento
+            <select name="id_tipo" required>
+                <option value="">Selecciona un procedimiento</option>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo.id }}" {% if tipo.id == conjunto.id_tipo %}selected{% endif %}>
+                        {{ tipo.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Trámite o actuación
+            <select name="id_actuacion" required>
+                <option value="">Selecciona un trámite o actuación</option>
+                {% for actuacion in actuaciones %}
+                    <option value="{{ actuacion.id }}" {% if actuacion.id == conjunto.id_actuacion %}selected{% endif %}>
+                        {{ actuacion.fase }} - {{ actuacion.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Tipo de dato
+            <select name="tipo_dato" required>
+                {% for valor, etiqueta in tipos_dato %}
+                    <option value="{{ valor }}" {% if valor == conjunto.tipo_dato %}selected{% endif %}>
+                        {{ etiqueta }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Descripcion
+            <textarea name="descripcion" rows="7">{{ conjunto.descripcion or "" }}</textarea>
+        </label>
+        <fieldset class="checkbox-group">
+            <legend>Características</legend>
+            <label class="check-row">
+                <input type="checkbox" name="documento" {% if conjunto.documento %}checked{% endif %}>
+                <span>Documento</span>
+            </label>
+            <label class="check-row">
+                <input type="checkbox" name="dato_sensible" {% if conjunto.dato_sensible %}checked{% endif %}>
+                <span>Dato sensible</span>
+            </label>
+        </fieldset>
+        <div class="form-actions">
+            <button type="submit">Guardar cambios</button>
+            <a class="secondary-link" href="{{ url_for('navegacion.conjuntos') }}">
+                Volver
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}
