@@ -48,11 +48,17 @@ def init_db():
                 descripcion TEXT,
                 actuacion TEXT NOT NULL DEFAULT 'General',
                 id_actuacion INTEGER,
+                id_conjunto_padre INTEGER,
+                repetible INTEGER NOT NULL DEFAULT 0,
                 tipo_dato TEXT NOT NULL DEFAULT 'texto',
                 documento INTEGER NOT NULL DEFAULT 0,
                 dato_sensible INTEGER NOT NULL DEFAULT 0,
                 orden INTEGER,
                 id_tipo INTEGER NOT NULL,
+                FOREIGN KEY (id_conjunto_padre)
+                    REFERENCES conjuntos (id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE,
                 FOREIGN KEY (id_actuacion)
                     REFERENCES actuaciones (id)
                     ON UPDATE CASCADE
@@ -66,7 +72,9 @@ def init_db():
             CREATE TABLE IF NOT EXISTS conjuntos_comunes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nombre TEXT NOT NULL UNIQUE,
-                descripcion TEXT
+                descripcion TEXT,
+                tipo_dato TEXT NOT NULL DEFAULT 'texto',
+                orden INTEGER
             );
 
             CREATE TABLE IF NOT EXISTS clasificaciones (
@@ -147,6 +155,34 @@ def init_db():
                     ON UPDATE CASCADE
                     ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS expediente_valores_repetibles (
+                id_expediente INTEGER NOT NULL,
+                id_conjunto_grupo INTEGER NOT NULL,
+                indice INTEGER NOT NULL,
+                id_conjunto_campo INTEGER NOT NULL,
+                valor TEXT,
+                documento INTEGER NOT NULL DEFAULT 0,
+                dato_sensible INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (
+                    id_expediente,
+                    id_conjunto_grupo,
+                    indice,
+                    id_conjunto_campo
+                ),
+                FOREIGN KEY (id_expediente)
+                    REFERENCES expedientes (id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE,
+                FOREIGN KEY (id_conjunto_grupo)
+                    REFERENCES conjuntos (id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE,
+                FOREIGN KEY (id_conjunto_campo)
+                    REFERENCES conjuntos (id)
+                    ON UPDATE CASCADE
+                    ON DELETE CASCADE
+            );
             """
         )
         _asegurar_columna_actuacion(connection)
@@ -154,10 +190,14 @@ def init_db():
         _asegurar_columna_orden_actuacion(connection)
         _normalizar_actuaciones_existentes(connection)
         _asegurar_columna_id_actuacion(connection)
+        _asegurar_columna_id_conjunto_padre(connection)
+        _asegurar_columna_repetible(connection)
         _asegurar_columna_tipo_dato(connection)
+        _asegurar_columna_tipo_dato_comun(connection)
         _asegurar_columna_documento(connection)
         _asegurar_columna_dato_sensible(connection)
         _asegurar_columna_orden(connection)
+        _asegurar_columna_orden_comun(connection)
         columna_valor_documento_creada = _asegurar_columna_valor_documento(connection)
         columna_valor_dato_sensible_creada = (
             _asegurar_columna_valor_dato_sensible(connection)
@@ -165,6 +205,7 @@ def init_db():
         _sincronizar_actuaciones_existentes(connection)
         _normalizar_orden_actuaciones(connection)
         _normalizar_orden_conjuntos(connection)
+        _normalizar_orden_conjuntos_comunes(connection)
         if columna_valor_documento_creada or columna_valor_dato_sensible_creada:
             _sincronizar_metadatos_valores_existentes(connection)
 
@@ -365,6 +406,8 @@ def crear_conjunto(
     tipo_dato=DEFAULT_TIPO_DATO,
     documento=False,
     dato_sensible=False,
+    repetible=False,
+    id_conjunto_padre=None,
 ):
     actuacion = _texto_opcional(actuacion) or DEFAULT_ACTUACION
     tipo_dato = _normalizar_tipo_dato(tipo_dato)
@@ -379,19 +422,23 @@ def crear_conjunto(
                     descripcion,
                     actuacion,
                     id_actuacion,
+                    id_conjunto_padre,
+                    repetible,
                     tipo_dato,
                     documento,
                     dato_sensible,
                     orden,
                     id_tipo
                 )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 nombre,
                 descripcion,
                 actuacion,
                 id_actuacion,
+                id_conjunto_padre,
+                _entero_booleano(repetible),
                 tipo_dato,
                 _entero_booleano(documento),
                 _entero_booleano(dato_sensible),
@@ -402,14 +449,16 @@ def crear_conjunto(
         return cursor.lastrowid
 
 
-def crear_conjunto_comun(nombre, descripcion):
+def crear_conjunto_comun(nombre, descripcion, tipo_dato=DEFAULT_TIPO_DATO):
+    tipo_dato = _normalizar_tipo_dato(tipo_dato)
     with get_connection() as connection:
+        orden = _siguiente_orden_conjunto_comun(connection)
         cursor = connection.execute(
             """
-            INSERT INTO conjuntos_comunes (nombre, descripcion)
-            VALUES (?, ?)
+            INSERT INTO conjuntos_comunes (nombre, descripcion, tipo_dato, orden)
+            VALUES (?, ?, ?, ?)
             """,
-            (nombre, descripcion),
+            (nombre, descripcion, tipo_dato, orden),
         )
         return cursor.lastrowid
 
@@ -418,16 +467,16 @@ def listar_conjuntos_comunes():
     with get_connection() as connection:
         return connection.execute(
             """
-            SELECT id, nombre, descripcion
+            SELECT id, nombre, descripcion, tipo_dato, orden
             FROM conjuntos_comunes
-            ORDER BY nombre
+            ORDER BY COALESCE(orden, id), nombre
             """
         ).fetchall()
 
 
 def listar_conjuntos():
     with get_connection() as connection:
-        return connection.execute(
+        filas = connection.execute(
             """
             SELECT
                 c.id,
@@ -439,6 +488,8 @@ def listar_conjuntos():
                     ?
                 ) AS actuacion,
                 c.id_actuacion,
+                c.id_conjunto_padre,
+                c.repetible,
                 c.tipo_dato,
                 c.documento,
                 c.dato_sensible,
@@ -448,10 +499,26 @@ def listar_conjuntos():
             FROM conjuntos AS c
             JOIN tipos AS t ON t.id = c.id_tipo
             LEFT JOIN actuaciones AS a ON a.id = c.id_actuacion
-            ORDER BY t.nombre, actuacion, COALESCE(c.orden, c.id), c.nombre
+            ORDER BY
+                t.nombre,
+                actuacion,
+                COALESCE(
+                    (
+                        SELECT padre.orden
+                        FROM conjuntos AS padre
+                        WHERE padre.id = c.id_conjunto_padre
+                    ),
+                    c.orden,
+                    c.id
+                ),
+                COALESCE(c.id_conjunto_padre, c.id),
+                c.id_conjunto_padre IS NOT NULL,
+                COALESCE(c.orden, c.id),
+                c.nombre
             """,
             (DEFAULT_ACTUACION,),
         ).fetchall()
+        return _conjuntos_anidados(filas)
 
 
 def listar_conjuntos_por_tipo(id_tipo, actuacion=None):
@@ -463,7 +530,7 @@ def listar_conjuntos_por_tipo(id_tipo, actuacion=None):
             filtro_actuacion = "AND actuacion = ?"
             parametros.append(actuacion)
 
-        return connection.execute(
+        filas = connection.execute(
             f"""
             SELECT
                 id,
@@ -471,6 +538,8 @@ def listar_conjuntos_por_tipo(id_tipo, actuacion=None):
                 descripcion,
                 actuacion,
                 id_actuacion,
+                id_conjunto_padre,
+                repetible,
                 tipo_dato,
                 documento,
                 dato_sensible,
@@ -487,6 +556,8 @@ def listar_conjuntos_por_tipo(id_tipo, actuacion=None):
                         ?
                     ) AS actuacion,
                     c.id_actuacion,
+                    c.id_conjunto_padre,
+                    c.repetible,
                     c.tipo_dato,
                     c.documento,
                     c.dato_sensible,
@@ -497,10 +568,25 @@ def listar_conjuntos_por_tipo(id_tipo, actuacion=None):
             )
             WHERE id_tipo = ?
             {filtro_actuacion}
-            ORDER BY actuacion, COALESCE(orden, id), nombre
+            ORDER BY
+                actuacion,
+                COALESCE(
+                    (
+                        SELECT padre.orden
+                        FROM conjuntos AS padre
+                        WHERE padre.id = id_conjunto_padre
+                    ),
+                    orden,
+                    id
+                ),
+                COALESCE(id_conjunto_padre, id),
+                id_conjunto_padre IS NOT NULL,
+                COALESCE(orden, id),
+                nombre
             """,
             parametros,
         ).fetchall()
+        return _conjuntos_anidados(filas)
 
 
 def obtener_conjunto(id_conjunto):
@@ -517,6 +603,8 @@ def obtener_conjunto(id_conjunto):
                     ?
                 ) AS actuacion,
                 c.id_actuacion,
+                c.id_conjunto_padre,
+                c.repetible,
                 c.tipo_dato,
                 c.documento,
                 c.dato_sensible,
@@ -530,6 +618,28 @@ def obtener_conjunto(id_conjunto):
             """,
             (DEFAULT_ACTUACION, id_conjunto),
         ).fetchone()
+
+
+def _conjuntos_anidados(filas):
+    elementos = {}
+    raices = []
+
+    for fila in filas:
+        elemento = dict(fila)
+        elemento["repetible"] = bool(elemento.get("repetible"))
+        elemento["documento"] = bool(elemento.get("documento"))
+        elemento["dato_sensible"] = bool(elemento.get("dato_sensible"))
+        elemento["campos"] = []
+        elementos[elemento["id"]] = elemento
+
+    for elemento in elementos.values():
+        id_padre = elemento.get("id_conjunto_padre")
+        if id_padre and id_padre in elementos:
+            elementos[id_padre]["campos"].append(elemento)
+        else:
+            raices.append(elemento)
+
+    return raices
 
 
 def actualizar_conjunto(
@@ -768,7 +878,7 @@ def obtener_valores_actuacion_expediente(id_expediente, actuacion):
         if not expediente:
             return {}
 
-        return {
+        valores = {
             fila["id_conjunto"]: {
                 "valor": fila["valor"] or "",
                 "documento": bool(fila["documento"]),
@@ -796,31 +906,142 @@ def obtener_valores_actuacion_expediente(id_expediente, actuacion):
             ).fetchall()
         }
 
+        filas_repetibles = connection.execute(
+            """
+            SELECT
+                evr.id_conjunto_grupo,
+                evr.indice,
+                evr.id_conjunto_campo,
+                evr.valor,
+                evr.documento,
+                evr.dato_sensible
+            FROM expediente_valores_repetibles AS evr
+            JOIN conjuntos AS grupo ON grupo.id = evr.id_conjunto_grupo
+            JOIN conjuntos AS campo ON campo.id = evr.id_conjunto_campo
+            LEFT JOIN actuaciones AS a ON a.id = grupo.id_actuacion
+            WHERE evr.id_expediente = ?
+                AND grupo.id_tipo = ?
+                AND COALESCE(
+                    NULLIF(TRIM(a.nombre), ''),
+                    NULLIF(TRIM(grupo.actuacion), ''),
+                    ?
+                ) = ?
+            ORDER BY
+                COALESCE(grupo.orden, grupo.id),
+                evr.indice,
+                COALESCE(campo.orden, campo.id)
+            """,
+            (id_expediente, expediente["id_tipo"], DEFAULT_ACTUACION, actuacion),
+        ).fetchall()
+
+        indices_por_grupo = {}
+        for fila in filas_repetibles:
+            id_grupo = fila["id_conjunto_grupo"]
+            indice = fila["indice"]
+            if id_grupo not in valores:
+                valores[id_grupo] = {"repetible": True, "entradas": []}
+                indices_por_grupo[id_grupo] = {}
+
+            if indice not in indices_por_grupo[id_grupo]:
+                indices_por_grupo[id_grupo][indice] = len(valores[id_grupo]["entradas"])
+                valores[id_grupo]["entradas"].append(
+                    {
+                        "indice": indice,
+                        "campos": {},
+                    }
+                )
+
+            posicion = indices_por_grupo[id_grupo][indice]
+            valores[id_grupo]["entradas"][posicion]["campos"][
+                fila["id_conjunto_campo"]
+            ] = {
+                "valor": fila["valor"] or "",
+                "documento": bool(fila["documento"]),
+                "dato_sensible": bool(fila["dato_sensible"]),
+            }
+
+        return valores
+
 
 def guardar_valores_actuacion_expediente(id_expediente, valores):
     with get_connection() as connection:
-        connection.executemany(
-            """
-            INSERT INTO expediente_valores
-                (id_expediente, id_conjunto, valor, documento, dato_sensible)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(id_expediente, id_conjunto)
-            DO UPDATE SET
-                valor = excluded.valor,
-                documento = excluded.documento,
-                dato_sensible = excluded.dato_sensible
-            """,
-            [
-                (
-                    id_expediente,
-                    id_conjunto,
-                    dato["valor"],
-                    _entero_booleano(dato["documento"]),
-                    _entero_booleano(dato["dato_sensible"]),
+        valores_normalizados = _normalizar_valores_actuacion(valores)
+        valores_simples = {
+            id_conjunto: dato
+            for id_conjunto, dato in valores_normalizados.items()
+            if not dato.get("repetible")
+        }
+        valores_repetibles = {
+            id_conjunto: dato
+            for id_conjunto, dato in valores_normalizados.items()
+            if dato.get("repetible")
+        }
+
+        if valores_simples:
+            connection.executemany(
+                """
+                INSERT INTO expediente_valores
+                    (id_expediente, id_conjunto, valor, documento, dato_sensible)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(id_expediente, id_conjunto)
+                DO UPDATE SET
+                    valor = excluded.valor,
+                    documento = excluded.documento,
+                    dato_sensible = excluded.dato_sensible
+                """,
+                [
+                    (
+                        id_expediente,
+                        id_conjunto,
+                        dato["valor"],
+                        _entero_booleano(dato["documento"]),
+                        _entero_booleano(dato["dato_sensible"]),
+                    )
+                    for id_conjunto, dato in valores_simples.items()
+                ],
+            )
+
+        for id_grupo, dato_grupo in valores_repetibles.items():
+            connection.execute(
+                """
+                DELETE FROM expediente_valores_repetibles
+                WHERE id_expediente = ? AND id_conjunto_grupo = ?
+                """,
+                (id_expediente, id_grupo),
+            )
+            filas = []
+            for indice, entrada in enumerate(dato_grupo["entradas"], start=1):
+                for id_campo, dato_campo in entrada["campos"].items():
+                    filas.append(
+                        (
+                            id_expediente,
+                            id_grupo,
+                            indice,
+                            id_campo,
+                            dato_campo["valor"],
+                            _entero_booleano(dato_campo["documento"]),
+                            _entero_booleano(dato_campo["dato_sensible"]),
+                        )
+                    )
+
+            if filas:
+                connection.executemany(
+                    """
+                    INSERT INTO expediente_valores_repetibles
+                        (
+                            id_expediente,
+                            id_conjunto_grupo,
+                            indice,
+                            id_conjunto_campo,
+                            valor,
+                            documento,
+                            dato_sensible
+                        )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    filas,
                 )
-                for id_conjunto, dato in _normalizar_valores_actuacion(valores).items()
-            ],
-        )
+
         connection.execute(
             """
             UPDATE expedientes
@@ -938,12 +1159,14 @@ def exportar_catalogo(id_tipo=None):
                 {
                     "nombre": conjunto["nombre"],
                     "descripcion": conjunto["descripcion"] or "",
+                    "tipo_dato": _normalizar_tipo_dato(conjunto["tipo_dato"]),
+                    "orden": conjunto["orden"] or 0,
                 }
                 for conjunto in connection.execute(
                     """
-                    SELECT nombre, descripcion
+                    SELECT nombre, descripcion, tipo_dato, orden
                     FROM conjuntos_comunes
-                    ORDER BY nombre
+                    ORDER BY COALESCE(orden, id), nombre
                     """
                 ).fetchall()
             ],
@@ -965,6 +1188,8 @@ def exportar_catalogo(id_tipo=None):
                     a.descripcion AS actuacion_descripcion,
                     COALESCE(a.fase, ?) AS fase,
                     a.orden AS actuacion_orden,
+                    c.id_conjunto_padre,
+                    c.repetible,
                     c.tipo_dato,
                     c.documento,
                     c.dato_sensible,
@@ -982,6 +1207,17 @@ def exportar_catalogo(id_tipo=None):
                     END,
                     COALESCE(a.orden, c.id),
                     actuacion,
+                    COALESCE(
+                        (
+                            SELECT padre.orden
+                            FROM conjuntos AS padre
+                            WHERE padre.id = c.id_conjunto_padre
+                        ),
+                        c.orden,
+                        c.id
+                    ),
+                    COALESCE(c.id_conjunto_padre, c.id),
+                    c.id_conjunto_padre IS NOT NULL,
                     COALESCE(c.orden, c.id),
                     c.nombre
                 """,
@@ -989,7 +1225,7 @@ def exportar_catalogo(id_tipo=None):
             ).fetchall()
 
             fases = {}
-            for campo in estructura:
+            for campo in _conjuntos_anidados(estructura):
                 nombre_actuacion = campo["actuacion"] or DEFAULT_ACTUACION
                 fase = _normalizar_fase(campo["fase"])
                 if fase not in fases:
@@ -1006,16 +1242,32 @@ def exportar_catalogo(id_tipo=None):
                         "datasets": [],
                     }
 
-                tramites[nombre_actuacion]["datasets"].append(
-                    {
-                        "nombre": campo["nombre"],
-                        "descripcion": campo["descripcion"] or "",
-                        "tipo_dato": _normalizar_tipo_dato(campo["tipo_dato"]),
-                        "documento": bool(campo["documento"]),
-                        "dato_sensible": bool(campo["dato_sensible"]),
-                        "orden": campo["orden"] or 0,
-                    }
-                )
+                dataset = {
+                    "nombre": campo["nombre"],
+                    "descripcion": campo["descripcion"] or "",
+                    "documento": bool(campo["documento"]),
+                    "dato_sensible": bool(campo["dato_sensible"]),
+                    "orden": campo["orden"] or 0,
+                }
+                if campo["repetible"]:
+                    dataset["repetible"] = True
+                    dataset["campos"] = [
+                        {
+                            "nombre": campo_hijo["nombre"],
+                            "descripcion": campo_hijo["descripcion"] or "",
+                            "tipo_dato": _normalizar_tipo_dato(
+                                campo_hijo["tipo_dato"]
+                            ),
+                            "documento": bool(campo_hijo["documento"]),
+                            "dato_sensible": bool(campo_hijo["dato_sensible"]),
+                            "orden": campo_hijo["orden"] or 0,
+                        }
+                        for campo_hijo in campo["campos"]
+                    ]
+                else:
+                    dataset["tipo_dato"] = _normalizar_tipo_dato(campo["tipo_dato"])
+
+                tramites[nombre_actuacion]["datasets"].append(dataset)
 
             fases_exportadas = []
             for fase in FASES:
@@ -1101,11 +1353,23 @@ def importar_catalogo(datos):
                 f"datos_comunes_expediente[{posicion}].nombre",
             )
             descripcion_conjunto = _texto_opcional(conjunto.get("descripcion"))
+            tipo_dato_conjunto = _normalizar_tipo_dato(
+                conjunto.get(
+                    "tipo_dato",
+                    conjunto.get("tipoDato", conjunto.get("tipo")),
+                )
+            )
+            orden_conjunto = _leer_orden_importado(
+                conjunto.get("orden"),
+                f"datos_comunes_expediente[{posicion}].orden",
+            )
             _crear_o_actualizar_conjunto_comun(
                 connection,
                 nombre_conjunto,
                 descripcion_conjunto,
                 resultado,
+                tipo_dato=tipo_dato_conjunto,
+                orden=orden_conjunto,
             )
 
         for posicion_tipo, tipo in enumerate(tipos, start=1):
@@ -1151,6 +1415,7 @@ def importar_catalogo(datos):
                     ),
                 )
                 descripcion_conjunto = _texto_opcional(conjunto.get("descripcion"))
+                repetible = _leer_booleano(conjunto.get("repetible"))
                 tipo_dato = _normalizar_tipo_dato(
                     conjunto.get(
                         "tipo_dato",
@@ -1174,7 +1439,7 @@ def importar_catalogo(datos):
                     or actuacion_por_bloque
                     or _inferir_actuacion(nombre_conjunto, descripcion_conjunto)
                 )
-                _crear_o_actualizar_conjunto(
+                id_conjunto = _crear_o_actualizar_conjunto(
                     connection,
                     nombre_conjunto,
                     descripcion_conjunto,
@@ -1188,7 +1453,65 @@ def importar_catalogo(datos):
                     fase_actuacion=fase_actuacion,
                     orden_actuacion=orden_actuacion,
                     orden=orden_conjunto,
+                    repetible=repetible,
                 )
+                if repetible:
+                    campos = conjunto.get("campos", [])
+                    if not isinstance(campos, list):
+                        raise ValueError(
+                            (
+                                f"conjuntos_datos[{posicion_tipo}].estructura"
+                                f"[{posicion_conjunto}].campos debe ser una lista."
+                            )
+                        )
+
+                    for posicion_campo, campo in enumerate(campos, start=1):
+                        if not isinstance(campo, dict):
+                            raise ValueError(
+                                (
+                                    f"conjuntos_datos[{posicion_tipo}].estructura"
+                                    f"[{posicion_conjunto}].campos"
+                                    f"[{posicion_campo}] debe ser un objeto."
+                                )
+                            )
+                        nombre_campo = _texto_obligatorio(
+                            campo.get("nombre"),
+                            (
+                                f"conjuntos_datos[{posicion_tipo}].estructura"
+                                f"[{posicion_conjunto}].campos"
+                                f"[{posicion_campo}].nombre"
+                            ),
+                        )
+                        _crear_o_actualizar_conjunto(
+                            connection,
+                            nombre_campo,
+                            _texto_opcional(campo.get("descripcion")),
+                            actuacion_conjunto,
+                            descripcion_actuacion,
+                            id_tipo,
+                            _normalizar_tipo_dato(
+                                campo.get(
+                                    "tipo_dato",
+                                    campo.get("tipoDato", campo.get("tipo")),
+                                )
+                            ),
+                            _leer_booleano(campo.get("documento")),
+                            _leer_booleano(
+                                campo.get("dato_sensible", campo.get("datoSensible"))
+                            ),
+                            resultado,
+                            fase_actuacion=fase_actuacion,
+                            orden_actuacion=orden_actuacion,
+                            orden=_leer_orden_importado(
+                                campo.get("orden"),
+                                (
+                                    f"conjuntos_datos[{posicion_tipo}].estructura"
+                                    f"[{posicion_conjunto}].campos"
+                                    f"[{posicion_campo}].orden"
+                                ),
+                            ),
+                            id_conjunto_padre=id_conjunto,
+                        )
 
     return resultado
 
@@ -1230,6 +1553,8 @@ def _crear_o_actualizar_conjunto(
     fase_actuacion=None,
     orden_actuacion=None,
     orden=None,
+    repetible=False,
+    id_conjunto_padre=None,
 ):
     actuacion = _texto_opcional(actuacion) or DEFAULT_ACTUACION
     tipo_dato = _normalizar_tipo_dato(tipo_dato)
@@ -1248,14 +1573,22 @@ def _crear_o_actualizar_conjunto(
             descripcion,
             actuacion,
             id_actuacion,
+            id_conjunto_padre,
+            repetible,
             tipo_dato,
             documento,
             dato_sensible,
             orden
         FROM conjuntos
-        WHERE LOWER(nombre) = LOWER(?) AND id_tipo = ? AND id_actuacion = ?
+        WHERE LOWER(nombre) = LOWER(?)
+            AND id_tipo = ?
+            AND id_actuacion = ?
+            AND (
+                (id_conjunto_padre IS NULL AND ? IS NULL)
+                OR id_conjunto_padre = ?
+            )
         """,
-        (nombre, id_tipo, id_actuacion),
+        (nombre, id_tipo, id_actuacion, id_conjunto_padre, id_conjunto_padre),
     ).fetchone()
 
     if fila:
@@ -1267,6 +1600,10 @@ def _crear_o_actualizar_conjunto(
             cambios["actuacion"] = actuacion
         if id_actuacion != fila["id_actuacion"]:
             cambios["id_actuacion"] = id_actuacion
+        if id_conjunto_padre != fila["id_conjunto_padre"]:
+            cambios["id_conjunto_padre"] = id_conjunto_padre
+        if _entero_booleano(repetible) != fila["repetible"]:
+            cambios["repetible"] = _entero_booleano(repetible)
         if tipo_dato != (fila["tipo_dato"] or DEFAULT_TIPO_DATO):
             cambios["tipo_dato"] = tipo_dato
         if _entero_booleano(documento) != fila["documento"]:
@@ -1293,19 +1630,23 @@ def _crear_o_actualizar_conjunto(
                 descripcion,
                 actuacion,
                 id_actuacion,
+                id_conjunto_padre,
+                repetible,
                 tipo_dato,
                 documento,
                 dato_sensible,
                 orden,
                 id_tipo
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             nombre,
             descripcion,
             actuacion,
             id_actuacion,
+            id_conjunto_padre,
+            _entero_booleano(repetible),
             tipo_dato,
             _entero_booleano(documento),
             _entero_booleano(dato_sensible),
@@ -1319,10 +1660,18 @@ def _crear_o_actualizar_conjunto(
     return cursor.lastrowid
 
 
-def _crear_o_actualizar_conjunto_comun(connection, nombre, descripcion, resultado):
+def _crear_o_actualizar_conjunto_comun(
+    connection,
+    nombre,
+    descripcion,
+    resultado,
+    tipo_dato=DEFAULT_TIPO_DATO,
+    orden=None,
+):
+    tipo_dato = _normalizar_tipo_dato(tipo_dato)
     fila = connection.execute(
         """
-        SELECT id, descripcion
+        SELECT id, descripcion, tipo_dato, orden
         FROM conjuntos_comunes
         WHERE LOWER(nombre) = LOWER(?)
         """,
@@ -1330,20 +1679,34 @@ def _crear_o_actualizar_conjunto_comun(connection, nombre, descripcion, resultad
     ).fetchone()
 
     if fila:
+        cambios = {}
         if descripcion and descripcion != (fila["descripcion"] or ""):
+            cambios["descripcion"] = descripcion
+        if tipo_dato != (fila["tipo_dato"] or DEFAULT_TIPO_DATO):
+            cambios["tipo_dato"] = tipo_dato
+        if orden is not None and orden != fila["orden"]:
+            cambios["orden"] = orden
+
+        if cambios:
+            asignaciones = ", ".join(f"{campo} = ?" for campo in cambios)
             connection.execute(
-                "UPDATE conjuntos_comunes SET descripcion = ? WHERE id = ?",
-                (descripcion, fila["id"]),
+                f"UPDATE conjuntos_comunes SET {asignaciones} WHERE id = ?",
+                [*cambios.values(), fila["id"]],
             )
             resultado["conjuntos_comunes_actualizados"] += 1
         return fila["id"]
 
     cursor = connection.execute(
         """
-        INSERT INTO conjuntos_comunes (nombre, descripcion)
-        VALUES (?, ?)
+        INSERT INTO conjuntos_comunes (nombre, descripcion, tipo_dato, orden)
+        VALUES (?, ?, ?, ?)
         """,
-        (nombre, descripcion),
+        (
+            nombre,
+            descripcion,
+            tipo_dato,
+            orden if orden is not None else _siguiente_orden_conjunto_comun(connection),
+        ),
     )
     resultado["conjuntos_comunes_creados"] += 1
     return cursor.lastrowid
@@ -1559,7 +1922,34 @@ def _normalizar_valores_actuacion(valores):
     valores_normalizados = {}
 
     for id_conjunto, dato in valores.items():
-        if isinstance(dato, dict):
+        if isinstance(dato, dict) and dato.get("repetible"):
+            entradas = []
+            for entrada in dato.get("entradas", []):
+                campos = {}
+                for id_campo, dato_campo in entrada.get("campos", {}).items():
+                    if isinstance(dato_campo, dict):
+                        campos[id_campo] = {
+                            "valor": _texto_opcional(dato_campo.get("valor")),
+                            "documento": _leer_booleano(dato_campo.get("documento")),
+                            "dato_sensible": _leer_booleano(
+                                dato_campo.get("dato_sensible")
+                            ),
+                        }
+                    else:
+                        campos[id_campo] = {
+                            "valor": _texto_opcional(dato_campo),
+                            "documento": False,
+                            "dato_sensible": False,
+                        }
+
+                if any(campo["valor"] for campo in campos.values()):
+                    entradas.append({"campos": campos})
+
+            valores_normalizados[id_conjunto] = {
+                "repetible": True,
+                "entradas": entradas,
+            }
+        elif isinstance(dato, dict):
             valores_normalizados[id_conjunto] = {
                 "valor": _texto_opcional(dato.get("valor")),
                 "documento": _leer_booleano(dato.get("documento")),
@@ -1725,12 +2115,45 @@ def _asegurar_columna_id_actuacion(connection):
         )
 
 
+def _asegurar_columna_id_conjunto_padre(connection):
+    columnas = _columnas_tabla(connection, "conjuntos")
+    if "id_conjunto_padre" not in columnas:
+        connection.execute(
+            """
+            ALTER TABLE conjuntos
+            ADD COLUMN id_conjunto_padre INTEGER
+            """
+        )
+
+
+def _asegurar_columna_repetible(connection):
+    columnas = _columnas_tabla(connection, "conjuntos")
+    if "repetible" not in columnas:
+        connection.execute(
+            """
+            ALTER TABLE conjuntos
+            ADD COLUMN repetible INTEGER NOT NULL DEFAULT 0
+            """
+        )
+
+
 def _asegurar_columna_tipo_dato(connection):
     columnas = _columnas_tabla(connection, "conjuntos")
     if "tipo_dato" not in columnas:
         connection.execute(
             """
             ALTER TABLE conjuntos
+            ADD COLUMN tipo_dato TEXT NOT NULL DEFAULT 'texto'
+            """
+        )
+
+
+def _asegurar_columna_tipo_dato_comun(connection):
+    columnas = _columnas_tabla(connection, "conjuntos_comunes")
+    if "tipo_dato" not in columnas:
+        connection.execute(
+            """
+            ALTER TABLE conjuntos_comunes
             ADD COLUMN tipo_dato TEXT NOT NULL DEFAULT 'texto'
             """
         )
@@ -1764,6 +2187,17 @@ def _asegurar_columna_orden(connection):
         connection.execute(
             """
             ALTER TABLE conjuntos
+            ADD COLUMN orden INTEGER
+            """
+        )
+
+
+def _asegurar_columna_orden_comun(connection):
+    columnas = _columnas_tabla(connection, "conjuntos_comunes")
+    if "orden" not in columnas:
+        connection.execute(
+            """
+            ALTER TABLE conjuntos_comunes
             ADD COLUMN orden INTEGER
             """
         )
@@ -1882,6 +2316,27 @@ def _normalizar_orden_conjuntos(connection):
             )
 
 
+def _normalizar_orden_conjuntos_comunes(connection):
+    filas = connection.execute(
+        """
+        SELECT id, orden
+        FROM conjuntos_comunes
+        ORDER BY COALESCE(orden, id), id
+        """
+    ).fetchall()
+
+    for posicion, fila in enumerate(filas, start=1):
+        if fila["orden"] is None:
+            connection.execute(
+                """
+                UPDATE conjuntos_comunes
+                SET orden = ?
+                WHERE id = ?
+                """,
+                (posicion * 10, fila["id"]),
+            )
+
+
 def _normalizar_orden_actuaciones(connection):
     filas = connection.execute(
         """
@@ -1958,6 +2413,13 @@ def _siguiente_orden_conjunto(connection, id_tipo, actuacion):
         (id_tipo, DEFAULT_ACTUACION, actuacion),
     ).fetchone()
 
+    return (fila["orden"] or 0) + 10
+
+
+def _siguiente_orden_conjunto_comun(connection):
+    fila = connection.execute(
+        "SELECT COALESCE(MAX(orden), 0) AS orden FROM conjuntos_comunes"
+    ).fetchone()
     return (fila["orden"] or 0) + 10
 
 

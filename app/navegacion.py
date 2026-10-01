@@ -128,14 +128,20 @@ EJEMPLO_CATALOGO = {
         {
             "nombre": "Titulo del expediente",
             "descripcion": "Denominacion breve e identificativa del expediente.",
+            "tipo_dato": "texto",
+            "orden": 10,
         },
         {
             "nombre": "Serie documental",
             "descripcion": "Serie documental o categoria archivistica del expediente.",
+            "tipo_dato": "texto",
+            "orden": 20,
         },
         {
             "nombre": "Fecha limite de tramitacion",
             "descripcion": "Fecha maxima prevista para finalizar la tramitacion.",
+            "tipo_dato": "fecha",
+            "orden": 30,
         },
     ],
     "procedimientos": [
@@ -361,16 +367,47 @@ def expediente_documento(id_expediente):
     valores = _valores_actuacion_desde_formulario(conjuntos)
     guardar_valores_actuacion_expediente(id_expediente, valores)
 
-    campos_documento = [
-        {
-            "nombre": conjunto["nombre"],
-            "valor": valores[conjunto["id"]]["valor"],
-            "tipo_dato": conjunto["tipo_dato"],
-            "dato_sensible": valores[conjunto["id"]]["dato_sensible"],
-        }
-        for conjunto in conjuntos
-        if valores[conjunto["id"]]["documento"]
-    ]
+    campos_documento = []
+    for conjunto in conjuntos:
+        valor_conjunto = valores.get(conjunto["id"], {})
+        if conjunto["repetible"]:
+            entradas_documento = []
+            for entrada in valor_conjunto.get("entradas", []):
+                campos_entrada = []
+                for campo in conjunto["campos"]:
+                    valor_campo = entrada["campos"].get(campo["id"], {})
+                    if valor_campo.get("documento"):
+                        campos_entrada.append(
+                            {
+                                "nombre": campo["nombre"],
+                                "valor": valor_campo.get("valor", ""),
+                                "tipo_dato": campo["tipo_dato"],
+                                "dato_sensible": valor_campo.get(
+                                    "dato_sensible",
+                                    False,
+                                ),
+                            }
+                        )
+                if campos_entrada:
+                    entradas_documento.append({"campos": campos_entrada})
+
+            if entradas_documento:
+                campos_documento.append(
+                    {
+                        "nombre": conjunto["nombre"],
+                        "repetible": True,
+                        "entradas": entradas_documento,
+                    }
+                )
+        elif valor_conjunto.get("documento"):
+            campos_documento.append(
+                {
+                    "nombre": conjunto["nombre"],
+                    "valor": valor_conjunto.get("valor", ""),
+                    "tipo_dato": conjunto["tipo_dato"],
+                    "dato_sensible": valor_conjunto.get("dato_sensible", False),
+                }
+            )
     titulo_documento = request.form.get("titulo_documento", "").strip()
 
     return render_template(
@@ -390,14 +427,14 @@ def tipos():
         descripcion = request.form.get("descripcion", "").strip()
 
         if not nombre:
-            flash("El nombre del conjunto de datos es obligatorio.", "error")
+            flash("El nombre del procedimiento es obligatorio.", "error")
         else:
             try:
                 crear_tipo(nombre, descripcion)
-                flash("Conjunto de datos creado correctamente.", "success")
+                flash("Procedimiento creado correctamente.", "success")
                 return redirect(url_for("navegacion.tipos"))
             except sqlite3.IntegrityError:
-                flash("Ya existe un conjunto de datos con ese nombre.", "error")
+                flash("Ya existe un procedimiento con ese nombre.", "error")
 
     return render_template(
         "tipos.html",
@@ -427,7 +464,7 @@ def conjuntos():
                 flash("El nombre del dato común es obligatorio.", "error")
             else:
                 try:
-                    crear_conjunto_comun(nombre, descripcion)
+                    crear_conjunto_comun(nombre, descripcion, tipo_dato)
                     flash("Dato común del expediente creado correctamente.", "success")
                     return redirect(url_for("navegacion.conjuntos"))
                 except sqlite3.IntegrityError:
@@ -679,7 +716,6 @@ def interoperabilidad():
         "interoperabilidad.html",
         active_endpoint="navegacion.interoperabilidad",
         tipos=listar_tipos(),
-        ejemplo_json=json.dumps(EJEMPLO_CATALOGO, indent=2, ensure_ascii=False),
         resultado_importacion=resultado_importacion,
     )
 
@@ -712,16 +748,47 @@ def _nombre_actuacion_desde_lista(actuaciones, id_actuacion):
 
 
 def _valores_comunes_desde_formulario(conjuntos_comunes):
-    return {
-        conjunto["id"]: request.form.get(f"comun_{conjunto['id']}", "").strip()
-        for conjunto in conjuntos_comunes
-    }
+    valores = {}
+
+    for conjunto in conjuntos_comunes:
+        valor = request.form.get(f"comun_{conjunto['id']}", "").strip()
+        if conjunto["tipo_dato"] == "texto_largo":
+            valor = _sanitizar_html_basico(valor)
+        valores[conjunto["id"]] = valor
+
+    return valores
 
 
 def _valores_actuacion_desde_formulario(conjuntos):
     valores = {}
 
     for conjunto in conjuntos:
+        if conjunto["repetible"]:
+            entradas = []
+            for indice in request.form.getlist(f"grupo_{conjunto['id']}_entrada"):
+                campos = {}
+                for campo in conjunto["campos"]:
+                    nombre_base = f"{conjunto['id']}_{indice}_{campo['id']}"
+                    valor = request.form.get(f"dato_{nombre_base}", "").strip()
+                    if campo["tipo_dato"] == "texto_largo":
+                        valor = _sanitizar_html_basico(valor)
+
+                    campos[campo["id"]] = {
+                        "valor": valor,
+                        "documento": _checkbox_activo(f"documento_{nombre_base}"),
+                        "dato_sensible": _checkbox_activo(
+                            f"dato_sensible_{nombre_base}"
+                        ),
+                    }
+
+                entradas.append({"campos": campos})
+
+            valores[conjunto["id"]] = {
+                "repetible": True,
+                "entradas": entradas,
+            }
+            continue
+
         valor = request.form.get(f"dato_{conjunto['id']}", "").strip()
         if conjunto["tipo_dato"] == "texto_largo":
             valor = _sanitizar_html_basico(valor)
@@ -768,7 +835,7 @@ def _descargar_json(datos, nombre_archivo):
 def _mensaje_importacion(resultado):
     return (
         "Importacion completada: "
-        f"{resultado['tipos_creados']} conjuntos de datos creados, "
+        f"{resultado['tipos_creados']} procedimientos creados, "
         f"{resultado['actuaciones_creadas']} trámites o actuaciones creados, "
         f"{resultado['conjuntos_comunes_creados']} datos comunes creados y "
         f"{resultado['conjuntos_creados']} elementos de estructura creados."

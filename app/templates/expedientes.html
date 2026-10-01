@@ -2,6 +2,61 @@
 
 {% block title %}GEDAI - Expedientes{% endblock %}
 
+{% macro common_input(campo) %}
+    {% set nombre_campo = 'comun_' ~ campo.id %}
+    {% if campo.tipo_dato == "texto_largo" %}
+        <div class="rich-field">
+            <span class="field-label">{{ campo.nombre }}</span>
+            <div class="rich-toolbar" aria-label="Formato del texto">
+                <button type="button" data-command="bold" title="Negrita">B</button>
+                <button type="button" data-command="italic" title="Cursiva">I</button>
+                <button type="button" data-command="underline" title="Subrayado">U</button>
+                <button type="button" data-command="insertUnorderedList" title="Lista">•</button>
+                <button type="button" data-command="insertOrderedList" title="Lista numerada">1.</button>
+            </div>
+            <div
+                class="rich-editor"
+                contenteditable="true"
+                data-rich-editor
+                data-target="{{ nombre_campo }}"
+                role="textbox"
+                aria-multiline="true"
+                aria-label="{{ campo.nombre }}"
+                data-placeholder="{{ campo.descripcion or 'Valor' }}"
+            ></div>
+            <textarea
+                class="rich-value"
+                id="{{ nombre_campo }}"
+                name="{{ nombre_campo }}"
+            ></textarea>
+        </div>
+    {% elif campo.tipo_dato == "numerico" %}
+        <label>
+            {{ campo.nombre }}
+            <input
+                type="number"
+                step="any"
+                name="{{ nombre_campo }}"
+                placeholder="{{ campo.descripcion or 'Valor' }}"
+            >
+        </label>
+    {% elif campo.tipo_dato == "fecha" %}
+        <label>
+            {{ campo.nombre }}
+            <input type="date" name="{{ nombre_campo }}">
+        </label>
+    {% else %}
+        <label>
+            {{ campo.nombre }}
+            <input
+                type="text"
+                name="{{ nombre_campo }}"
+                placeholder="{{ campo.descripcion or 'Valor' }}"
+            >
+        </label>
+    {% endif %}
+{% endmacro %}
+
 {% block content %}
 <section class="page-heading">
     <p class="eyebrow">Tramitacion</p>
@@ -11,45 +66,7 @@
     </p>
 </section>
 
-<section class="split-layout">
-    <form class="panel form-panel" method="post">
-        <h2>Iniciar expediente</h2>
-        <label>
-            Conjunto de datos del expediente
-            <select name="id_tipo" required>
-                <option value="">Selecciona un conjunto de datos</option>
-                {% for tipo in tipos %}
-                    <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
-                {% endfor %}
-            </select>
-        </label>
-
-        {% if conjuntos_comunes %}
-            <section class="form-section">
-                <div class="section-title compact-title">
-                    <h3>Datos comunes</h3>
-                    <span>{{ conjuntos_comunes|length }}</span>
-                </div>
-                <div class="generated-form">
-                    {% for conjunto in conjuntos_comunes %}
-                        <label>
-                            {{ conjunto.nombre }}
-                            <input
-                                type="text"
-                                name="comun_{{ conjunto.id }}"
-                                placeholder="{{ conjunto.descripcion or 'Valor' }}"
-                            >
-                        </label>
-                    {% endfor %}
-                </div>
-            </section>
-        {% else %}
-            <p class="empty-state">Todavia no hay datos comunes del expediente definidos.</p>
-        {% endif %}
-
-        <button type="submit" {% if not tipos %}disabled{% endif %}>Crear expediente</button>
-    </form>
-
+<section class="wide-layout">
     <section class="panel">
         <div class="section-title">
             <h2>Expedientes registrados</h2>
@@ -73,7 +90,7 @@
                             <span>Actualizado: {{ expediente.fecha_actualizacion }}</span>
                         </div>
                         <a
-                            class="secondary-link"
+                            class="button-link"
                             href="{{ url_for('navegacion.expediente_detalle', id_expediente=expediente.id) }}"
                         >
                             Abrir expediente
@@ -85,5 +102,78 @@
             <p class="empty-state">Todavia no hay expedientes iniciados.</p>
         {% endif %}
     </section>
+
+    <form class="panel form-panel" method="post">
+        <h2>Abrir nuevo expediente</h2>
+        <label>
+            Procedimientos
+            <select name="id_tipo" required>
+                <option value="">Selecciona procedimiento</option>
+                {% for tipo in tipos %}
+                    <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        {% if conjuntos_comunes %}
+            <section class="form-section">
+                <div class="section-title compact-title">
+                    <h3>Datos comunes</h3>
+                    <span>{{ conjuntos_comunes|length }}</span>
+                </div>
+                <div class="generated-form">
+                    {% for conjunto in conjuntos_comunes %}
+                        {{ common_input(conjunto) }}
+                    {% endfor %}
+                </div>
+            </section>
+        {% else %}
+            <p class="empty-state">Todavia no hay datos comunes del expediente definidos.</p>
+        {% endif %}
+
+        <button type="submit" {% if not tipos %}disabled{% endif %}>Abrir nuevo expediente</button>
+    </form>
 </section>
+
+<script>
+    function syncRichEditor(editor) {
+        const target = document.getElementById(editor.dataset.target);
+        if (!target) {
+            return;
+        }
+
+        const empty = editor.textContent.trim() === "";
+        target.value = empty ? "" : editor.innerHTML.trim();
+    }
+
+    document.querySelectorAll("[data-rich-editor]").forEach((editor) => {
+        syncRichEditor(editor);
+        editor.addEventListener("input", () => syncRichEditor(editor));
+    });
+
+    document.addEventListener("click", (event) => {
+        const toolbarButton = event.target.closest(".rich-toolbar button");
+        if (!toolbarButton) {
+            return;
+        }
+
+        const field = toolbarButton.closest(".rich-field");
+        const editor = field ? field.querySelector("[data-rich-editor]") : null;
+        if (!editor) {
+            return;
+        }
+
+        editor.focus();
+        document.execCommand(toolbarButton.dataset.command, false, null);
+        syncRichEditor(editor);
+    });
+
+    document.querySelectorAll("form").forEach((form) => {
+        form.addEventListener("submit", () => {
+            document
+                .querySelectorAll("[data-rich-editor]")
+                .forEach((editor) => syncRichEditor(editor));
+        });
+    });
+</script>
 {% endblock %}

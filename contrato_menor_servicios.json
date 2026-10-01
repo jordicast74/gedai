@@ -1,0 +1,643 @@
+{
+  "version": "3.0",
+  "origen": "GEDAI",
+  "datos_comunes_expediente": [
+    {
+      "nombre": "Título del expediente",
+      "descripcion": "Denominación breve e identificativa del expediente.",
+      "tipo_dato": "texto",
+      "orden": 10
+    },
+    {
+      "nombre": "Número de expediente",
+      "descripcion": "Código o referencia administrativa del expediente.",
+      "tipo_dato": "texto",
+      "orden": 20
+    },
+    {
+      "nombre": "Serie documental",
+      "descripcion": "Serie documental o categoría archivística aplicable.",
+      "tipo_dato": "texto",
+      "orden": 30
+    },
+    {
+      "nombre": "Unidad promotora",
+      "descripcion": "Área, servicio o unidad que impulsa el expediente.",
+      "tipo_dato": "texto",
+      "orden": 40
+    },
+    {
+      "nombre": "Unidad tramitadora",
+      "descripcion": "Unidad responsable de la tramitación administrativa.",
+      "tipo_dato": "texto",
+      "orden": 50
+    },
+    {
+      "nombre": "Responsable del expediente",
+      "descripcion": "Persona responsable de la gestión del expediente.",
+      "tipo_dato": "texto",
+      "orden": 60
+    },
+    {
+      "nombre": "Tipo de contrato",
+      "descripcion": "Modalidad del contrato menor.",
+      "tipo_dato": "texto",
+      "orden": 70
+    },
+    {
+      "nombre": "Estado del expediente",
+      "descripcion": "Situación general del expediente durante la tramitación.",
+      "tipo_dato": "texto",
+      "orden": 80
+    },
+    {
+      "nombre": "Fecha de inicio",
+      "descripcion": "Fecha de apertura o inicio del expediente.",
+      "tipo_dato": "fecha",
+      "orden": 90
+    },
+    {
+      "nombre": "Fecha límite de tramitación",
+      "descripcion": "Fecha máxima prevista para finalizar la tramitación.",
+      "tipo_dato": "fecha",
+      "orden": 100
+    },
+    {
+      "nombre": "Observaciones generales",
+      "descripcion": "Notas o información transversal del expediente.",
+      "tipo_dato": "texto_largo",
+      "orden": 110
+    }
+  ],
+  "procedimientos": [
+    {
+      "nombre": "Contratación menor de servicios",
+      "descripcion": "Procedimiento para la tramitación de contratos menores de servicios.",
+      "fases": [
+        {
+          "nombre": "Inicio",
+          "tramites_o_actuaciones": [
+            {
+              "nombre": "Solicitud",
+              "descripcion": "Petición inicial que motiva la apertura del expediente.",
+              "orden": 10,
+              "datasets": [
+                {
+                  "nombre": "Fecha de solicitud",
+                  "descripcion": "Fecha en que se formula la solicitud.",
+                  "tipo_dato": "fecha",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Unidad solicitante",
+                  "descripcion": "Unidad que solicita la contratación.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "Persona solicitante",
+                  "descripcion": "Persona que realiza o firma la solicitud.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                },
+                {
+                  "nombre": "Objeto inicial solicitado",
+                  "descripcion": "Resumen de la prestación solicitada.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 40
+                },
+                {
+                  "nombre": "Observaciones de la solicitud",
+                  "descripcion": "Información adicional aportada al iniciar el expediente.",
+                  "tipo_dato": "texto_largo",
+                  "documento": false,
+                  "dato_sensible": false,
+                  "orden": 50
+                }
+              ]
+            },
+            {
+              "nombre": "Actuaciones previas",
+              "descripcion": "Comprobaciones y antecedentes previos a la instrucción del expediente.",
+              "orden": 20,
+              "datasets": [
+                {
+                  "nombre": "Antecedentes",
+                  "descripcion": "Antecedentes o referencias relacionadas con la necesidad.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Comprobaciones realizadas",
+                  "descripcion": "Comprobaciones iniciales efectuadas antes de elaborar el informe.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "Resultado de las actuaciones previas",
+                  "descripcion": "Conclusión de las actuaciones preparatorias.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                }
+              ]
+            },
+            {
+              "nombre": "Acuerdo incoación",
+              "descripcion": "Actuación por la que se acuerda iniciar formalmente el expediente.",
+              "orden": 30,
+              "datasets": [
+                {
+                  "nombre": "Fecha del acuerdo de incoación",
+                  "descripcion": "Fecha en la que se acuerda iniciar el expediente.",
+                  "tipo_dato": "fecha",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Órgano que acuerda la incoación",
+                  "descripcion": "Órgano administrativo que acuerda el inicio.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "Contenido del acuerdo",
+                  "descripcion": "Contenido o motivación del acuerdo de incoación.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "nombre": "Instrucción",
+          "tramites_o_actuaciones": [
+            {
+              "nombre": "Elaborar informe",
+              "descripcion": "Informe justificativo de la contratación menor.",
+              "orden": 40,
+              "datasets": [
+                {
+                  "nombre": "Objeto del contrato",
+                  "descripcion": "Objeto concreto del contrato menor.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Descripción de la prestación",
+                  "descripcion": "Descripción detallada del servicio que se debe contratar.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "CPV",
+                  "descripcion": "Código CPV correspondiente a la prestación.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                },
+                {
+                  "nombre": "Justificación",
+                  "descripcion": "Justificación de la necesidad, motivación, consecuencia e insuficiencia de medios.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 40
+                },
+                {
+                  "nombre": "Valor estimado sin IVA",
+                  "descripcion": "Valor estimado del contrato, sin IVA.",
+                  "tipo_dato": "numerico",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 50
+                },
+                {
+                  "nombre": "Duración",
+                  "descripcion": "Duración prevista de la prestación.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 60
+                }
+              ]
+            },
+            {
+              "nombre": "Gestión económica",
+              "descripcion": "Actuación para comprobar y reservar el crédito necesario.",
+              "orden": 50,
+              "datasets": [
+                {
+                  "nombre": "Aplicación presupuestaria",
+                  "descripcion": "Partida o aplicación presupuestaria que financia el gasto.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Importe retenido sin IVA",
+                  "descripcion": "Importe de crédito retenido, sin IVA.",
+                  "tipo_dato": "numerico",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "IVA",
+                  "descripcion": "Importe del IVA asociado a la retención.",
+                  "tipo_dato": "numerico",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                },
+                {
+                  "nombre": "Importe total retenido",
+                  "descripcion": "Importe total de la retención de crédito.",
+                  "tipo_dato": "numerico",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 40
+                },
+                {
+                  "nombre": "Número de operación contable",
+                  "descripcion": "Referencia de la operación contable o documento equivalente.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 50
+                },
+                {
+                  "nombre": "Fecha de retención",
+                  "descripcion": "Fecha en que se realiza la retención de crédito.",
+                  "tipo_dato": "fecha",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 60
+                }
+              ]
+            },
+            {
+              "nombre": "Publicación",
+              "descripcion": "Publicación o difusión de la necesidad de contratación.",
+              "orden": 60,
+              "datasets": [
+                {
+                  "nombre": "Medio de publicación",
+                  "descripcion": "Canal o espacio en el que se publica la solicitud.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Fecha de publicación",
+                  "descripcion": "Fecha de publicación o difusión.",
+                  "tipo_dato": "fecha",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "Plazo de presentación",
+                  "descripcion": "Plazo otorgado para presentar oferta o documentación.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                },
+                {
+                  "nombre": "Texto de la publicación",
+                  "descripcion": "Contenido publicado.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 40
+                }
+              ]
+            },
+            {
+              "nombre": "Subsanación-ampliación",
+              "descripcion": "Recepción de ofertas, subsanaciones y ampliaciones de información.",
+              "orden": 70,
+              "datasets": [
+                {
+                  "nombre": "Empresas presentadas",
+                  "descripcion": "Relación de empresas que han presentado oferta o documentación.",
+                  "repetible": true,
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10,
+                  "campos": [
+                    {
+                      "nombre": "Nombre o razón social",
+                      "descripcion": "Nombre de la empresa presentada.",
+                      "tipo_dato": "texto",
+                      "documento": true,
+                      "dato_sensible": false,
+                      "orden": 10
+                    },
+                    {
+                      "nombre": "NIF o CIF",
+                      "descripcion": "Identificador fiscal de la empresa.",
+                      "tipo_dato": "texto",
+                      "documento": true,
+                      "dato_sensible": true,
+                      "orden": 20
+                    },
+                    {
+                      "nombre": "Fecha de presentación",
+                      "descripcion": "Fecha en que se recibe la oferta o documentación.",
+                      "tipo_dato": "fecha",
+                      "documento": true,
+                      "dato_sensible": false,
+                      "orden": 30
+                    },
+                    {
+                      "nombre": "Importe ofertado sin IVA",
+                      "descripcion": "Importe ofertado por la empresa, sin IVA.",
+                      "tipo_dato": "numerico",
+                      "documento": true,
+                      "dato_sensible": false,
+                      "orden": 40
+                    },
+                    {
+                      "nombre": "IVA",
+                      "descripcion": "Importe de IVA de la oferta.",
+                      "tipo_dato": "numerico",
+                      "documento": true,
+                      "dato_sensible": false,
+                      "orden": 50
+                    },
+                    {
+                      "nombre": "Importe total",
+                      "descripcion": "Importe total de la oferta.",
+                      "tipo_dato": "numerico",
+                      "documento": true,
+                      "dato_sensible": false,
+                      "orden": 60
+                    },
+                    {
+                      "nombre": "Documentación pendiente",
+                      "descripcion": "Documentación requerida o pendiente de subsanar.",
+                      "tipo_dato": "texto_largo",
+                      "documento": true,
+                      "dato_sensible": false,
+                      "orden": 70
+                    },
+                    {
+                      "nombre": "Observaciones",
+                      "descripcion": "Observaciones específicas de la empresa presentada.",
+                      "tipo_dato": "texto_largo",
+                      "documento": false,
+                      "dato_sensible": false,
+                      "orden": 80
+                    }
+                  ]
+                },
+                {
+                  "nombre": "Requerimientos de subsanación",
+                  "descripcion": "Requerimientos efectuados para completar o corregir documentación.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "Ampliaciones concedidas",
+                  "descripcion": "Ampliaciones de plazo o información concedidas durante la tramitación.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                },
+                {
+                  "nombre": "Fecha límite de subsanación o ampliación",
+                  "descripcion": "Fecha límite otorgada para subsanar o ampliar información.",
+                  "tipo_dato": "fecha",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 40
+                },
+                {
+                  "nombre": "Resultado de la subsanación-ampliación",
+                  "descripcion": "Resultado final de la actuación de subsanación o ampliación.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 50
+                }
+              ]
+            },
+            {
+              "nombre": "Valoración de ofertas",
+              "descripcion": "Análisis y valoración de las ofertas recibidas.",
+              "orden": 80,
+              "datasets": [
+                {
+                  "nombre": "Criterio de valoración",
+                  "descripcion": "Criterios utilizados para valorar las ofertas.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Oferta propuesta",
+                  "descripcion": "Oferta o empresa propuesta para la adjudicación.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "Motivación de la propuesta",
+                  "descripcion": "Motivación técnica, económica o administrativa de la propuesta.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                },
+                {
+                  "nombre": "Importe propuesto sin IVA",
+                  "descripcion": "Importe propuesto para la adjudicación, sin IVA.",
+                  "tipo_dato": "numerico",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 40
+                },
+                {
+                  "nombre": "Observaciones de valoración",
+                  "descripcion": "Observaciones complementarias de la valoración.",
+                  "tipo_dato": "texto_largo",
+                  "documento": false,
+                  "dato_sensible": false,
+                  "orden": 50
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "nombre": "Resolución",
+          "tramites_o_actuaciones": [
+            {
+              "nombre": "Acuerdo-resolución",
+              "descripcion": "Resolución de adjudicación o aprobación del contrato menor.",
+              "orden": 90,
+              "datasets": [
+                {
+                  "nombre": "Fecha del acuerdo o resolución",
+                  "descripcion": "Fecha en que se aprueba o resuelve la adjudicación.",
+                  "tipo_dato": "fecha",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Órgano que resuelve",
+                  "descripcion": "Órgano competente que dicta el acuerdo o resolución.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "Empresa adjudicataria",
+                  "descripcion": "Empresa seleccionada para ejecutar la prestación.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                },
+                {
+                  "nombre": "Importe de adjudicación sin IVA",
+                  "descripcion": "Importe adjudicado, sin IVA.",
+                  "tipo_dato": "numerico",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 40
+                },
+                {
+                  "nombre": "Contenido del acuerdo o resolución",
+                  "descripcion": "Texto o contenido principal de la resolución.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 50
+                }
+              ]
+            },
+            {
+              "nombre": "Notificación",
+              "descripcion": "Comunicación de la resolución a las personas o empresas interesadas.",
+              "orden": 100,
+              "datasets": [
+                {
+                  "nombre": "Destinatarios de la notificación",
+                  "descripcion": "Personas, empresas o unidades destinatarias de la notificación.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": true,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Medio de notificación",
+                  "descripcion": "Canal utilizado para la notificación.",
+                  "tipo_dato": "texto",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "Fecha de notificación",
+                  "descripcion": "Fecha en la que se practica la notificación.",
+                  "tipo_dato": "fecha",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                },
+                {
+                  "nombre": "Resultado de la notificación",
+                  "descripcion": "Resultado o estado de la notificación.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 40
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "nombre": "Finalización",
+          "tramites_o_actuaciones": [
+            {
+              "nombre": "Cierre del expediente",
+              "descripcion": "Actuación final de cierre y archivo del expediente.",
+              "orden": 110,
+              "datasets": [
+                {
+                  "nombre": "Fecha de cierre",
+                  "descripcion": "Fecha en que se cierra el expediente.",
+                  "tipo_dato": "fecha",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 10
+                },
+                {
+                  "nombre": "Motivo de cierre",
+                  "descripcion": "Motivo o circunstancia que permite cerrar el expediente.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 20
+                },
+                {
+                  "nombre": "Resultado final",
+                  "descripcion": "Resultado final de la tramitación.",
+                  "tipo_dato": "texto_largo",
+                  "documento": true,
+                  "dato_sensible": false,
+                  "orden": 30
+                },
+                {
+                  "nombre": "Observaciones de cierre",
+                  "descripcion": "Observaciones finales o incidencias pendientes.",
+                  "tipo_dato": "texto_largo",
+                  "documento": false,
+                  "dato_sensible": false,
+                  "orden": 40
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

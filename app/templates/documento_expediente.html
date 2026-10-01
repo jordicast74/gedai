@@ -15,7 +15,27 @@
             {% for campo in campos_documento %}
                 <article class="document-field">
                     <h2>{{ campo.nombre }}</h2>
-                    {% if campo.dato_sensible %}
+                    {% if campo.repetible %}
+                        <div class="document-repeatable">
+                            {% for entrada in campo.entradas %}
+                                <section class="document-repeatable-entry">
+                                    <h3>Entrada {{ loop.index }}</h3>
+                                    {% for campo_entrada in entrada.campos %}
+                                        <div class="document-repeatable-field">
+                                            <strong>{{ campo_entrada.nombre }}</strong>
+                                            {% if campo_entrada.dato_sensible %}
+                                                <p class="sensitive-note"><em>dato sensible</em></p>
+                                            {% elif campo_entrada.tipo_dato == "texto_largo" %}
+                                                <div class="document-rich-text">{{ campo_entrada.valor|rich_text }}</div>
+                                            {% else %}
+                                                <p>{{ campo_entrada.valor or "Sin valor" }}</p>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </section>
+                            {% endfor %}
+                        </div>
+                    {% elif campo.dato_sensible %}
                         <p class="sensitive-note"><em>dato sensible</em></p>
                     {% elif campo.tipo_dato == "texto_largo" %}
                         <div class="document-rich-text">{{ campo.valor|rich_text }}</div>

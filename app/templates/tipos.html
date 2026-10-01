@@ -1,30 +1,34 @@
 {% extends "base.html" %}
 
-{% block title %}GEDAI - Conjuntos de datos{% endblock %}
+{% block title %}GEDAI - Procedimientos{% endblock %}
 
 {% block content %}
 <section class="page-heading">
     <p class="eyebrow">Catalogo</p>
-    <h1>Conjuntos de datos</h1>
+    <h1>Procedimientos</h1>
 </section>
 
-<section class="split-layout">
-    <form class="panel form-panel" method="post">
-        <h2>Nuevo conjunto de datos</h2>
-        <label>
-            Nombre
-            <input type="text" name="nombre" required maxlength="120" placeholder="Ej. Contrataciones menores de servicios">
-        </label>
-        <label>
-            Descripcion
-            <textarea name="descripcion" rows="5" placeholder="Descripcion breve"></textarea>
-        </label>
-        <button type="submit">Crear conjunto de datos</button>
-    </form>
+<section class="wide-layout">
+    <section class="panel">
+        <div class="section-title">
+            <h2>Nuevo procedimiento</h2>
+        </div>
+        <form class="compact-form" method="post">
+            <label>
+                Nombre
+                <input type="text" name="nombre" required maxlength="120" placeholder="Ej. Contrataciones menores de servicios">
+            </label>
+            <label>
+                Descripcion
+                <input type="text" name="descripcion" maxlength="240" placeholder="Descripcion breve">
+            </label>
+            <button type="submit">Crear procedimiento</button>
+        </form>
+    </section>
 
     <section class="panel">
         <div class="section-title">
-            <h2>Conjuntos de datos registrados</h2>
+            <h2>Procedimientos registrados</h2>
             <span>{{ tipos|length }}</span>
         </div>
 
@@ -50,7 +54,7 @@
                 </table>
             </div>
         {% else %}
-            <p class="empty-state">Todavia no hay conjuntos de datos registrados.</p>
+            <p class="empty-state">Todavia no hay procedimientos registrados.</p>
         {% endif %}
     </section>
 </section>

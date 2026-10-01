@@ -11,8 +11,8 @@
     </p>
 </section>
 
-<section class="split-layout">
-    <form class="panel form-panel" method="post">
+<section class="wide-layout">
+    <form class="panel dataset-common-form" method="post">
         <input type="hidden" name="formulario" value="comun">
         <h2>Dato común del expediente</h2>
         <label>
@@ -26,8 +26,16 @@
             >
         </label>
         <label>
+            Tipo de dato
+            <select name="tipo_dato" required>
+                {% for valor, etiqueta in tipos_dato %}
+                    <option value="{{ valor }}">{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
             Descripcion
-            <textarea name="descripcion" rows="4" placeholder="Descripcion breve"></textarea>
+            <input type="text" name="descripcion" maxlength="240" placeholder="Descripcion breve">
         </label>
 
         <button type="submit">Crear dato común</button>
@@ -40,16 +48,16 @@
         </div>
 
         {% if conjuntos_comunes %}
-            <div class="list-stack">
+            <div class="common-clean-list">
                 {% for conjunto in conjuntos_comunes %}
-                    <article class="data-row">
-                        <div class="data-row-main">
-                            <div>
-                                <h3>{{ conjunto.nombre }}</h3>
-                                <p>{{ conjunto.descripcion or "Sin descripcion" }}</p>
-                            </div>
-                            <span class="pill">Expediente</span>
-                        </div>
+                    <article class="common-clean-row">
+                        <span class="common-clean-name">{{ conjunto.nombre }}</span>
+                        <span class="common-clean-description">{{ conjunto.descripcion or "" }}</span>
+                        <span class="common-clean-type">
+                            {% for valor, etiqueta in tipos_dato %}
+                                {% if valor == conjunto.tipo_dato %}{{ etiqueta }}{% endif %}
+                            {% endfor %}
+                        </span>
                     </article>
                 {% endfor %}
             </div>
@@ -57,9 +65,6 @@
             <p class="empty-state">Todavia no hay datos comunes del expediente.</p>
         {% endif %}
     </section>
-</section>
-
-<section class="split-layout">
     <form class="panel form-panel" method="post">
         <input type="hidden" name="formulario" value="especifico">
         <h2>Nuevo campo de dataset</h2>
@@ -153,9 +158,13 @@
                                     <td>{{ conjunto.tipo_nombre }}</td>
                                     <td>{{ conjunto.actuacion }}</td>
                                     <td>
-                                        {% for valor, etiqueta in tipos_dato %}
-                                            {% if valor == conjunto.tipo_dato %}{{ etiqueta }}{% endif %}
-                                        {% endfor %}
+                                        {% if conjunto.repetible %}
+                                            Grupo repetible
+                                        {% else %}
+                                            {% for valor, etiqueta in tipos_dato %}
+                                                {% if valor == conjunto.tipo_dato %}{{ etiqueta }}{% endif %}
+                                            {% endfor %}
+                                        {% endif %}
                                     </td>
                                     <td>{{ "Sí" if conjunto.documento else "No" }}</td>
                                     <td>{{ "Sí" if conjunto.dato_sensible else "No" }}</td>

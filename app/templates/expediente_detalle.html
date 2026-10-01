@@ -2,6 +2,109 @@
 
 {% block title %}GEDAI - {{ expediente.nombre }}{% endblock %}
 
+{% macro dataset_input(campo, nombre_campo, id_campo, valor_actual) %}
+    {% if campo.tipo_dato == "texto_largo" %}
+        <div class="rich-field">
+            <span class="field-label">{{ campo.nombre }}</span>
+            <div class="rich-toolbar" aria-label="Formato del texto">
+                <button type="button" data-command="bold" title="Negrita">B</button>
+                <button type="button" data-command="italic" title="Cursiva">I</button>
+                <button type="button" data-command="underline" title="Subrayado">U</button>
+                <button type="button" data-command="insertUnorderedList" title="Lista">•</button>
+                <button type="button" data-command="insertOrderedList" title="Lista numerada">1.</button>
+            </div>
+            <div
+                class="rich-editor"
+                contenteditable="true"
+                data-rich-editor
+                data-target="{{ id_campo }}"
+                role="textbox"
+                aria-multiline="true"
+                aria-label="{{ campo.nombre }}"
+                data-placeholder="{{ campo.descripcion or 'Valor' }}"
+            >{{ valor_actual|rich_text }}</div>
+            <textarea
+                class="rich-value"
+                id="{{ id_campo }}"
+                name="{{ nombre_campo }}"
+            >{{ valor_actual }}</textarea>
+        </div>
+    {% elif campo.tipo_dato == "numerico" %}
+        <label>
+            {{ campo.nombre }}
+            <input
+                type="number"
+                step="any"
+                name="{{ nombre_campo }}"
+                value="{{ valor_actual }}"
+                placeholder="{{ campo.descripcion or 'Valor' }}"
+            >
+        </label>
+    {% elif campo.tipo_dato == "fecha" %}
+        <label>
+            {{ campo.nombre }}
+            <input
+                type="date"
+                name="{{ nombre_campo }}"
+                value="{{ valor_actual }}"
+            >
+        </label>
+    {% else %}
+        <label>
+            {{ campo.nombre }}
+            <input
+                type="text"
+                name="{{ nombre_campo }}"
+                value="{{ valor_actual }}"
+                placeholder="{{ campo.descripcion or 'Valor' }}"
+            >
+        </label>
+    {% endif %}
+{% endmacro %}
+
+{% macro repeatable_entry(conjunto, entrada, indice) %}
+    <article class="repeatable-entry" data-repeatable-entry>
+        <header class="repeatable-entry-header">
+            <h3>Entrada <span data-entry-number></span></h3>
+            <button class="secondary-button" type="button" data-remove-repeatable>
+                Eliminar
+            </button>
+        </header>
+        <input type="hidden" name="grupo_{{ conjunto.id }}_entrada" value="{{ indice }}">
+
+        <div class="repeatable-fields">
+            {% for campo in conjunto.campos %}
+                {% set dato_campo = entrada.campos.get(campo.id) if entrada and entrada.campos else none %}
+                {% set valor_campo = dato_campo.valor if dato_campo else '' %}
+                {% set documento_campo = dato_campo.documento if dato_campo else campo.documento %}
+                {% set dato_sensible_campo = dato_campo.dato_sensible if dato_campo else campo.dato_sensible %}
+                {% set nombre_campo = 'dato_' ~ conjunto.id ~ '_' ~ indice ~ '_' ~ campo.id %}
+                <section class="dataset-field nested-field">
+                    {{ dataset_input(campo, nombre_campo, nombre_campo, valor_campo) }}
+                    <div class="dataset-flags" aria-label="Características del campo">
+                        <label class="check-row compact">
+                            <input
+                                type="checkbox"
+                                name="documento_{{ conjunto.id }}_{{ indice }}_{{ campo.id }}"
+                                {% if documento_campo %}checked{% endif %}
+                            >
+                            <span>Documento</span>
+                        </label>
+                        <label class="check-row compact">
+                            <input
+                                type="checkbox"
+                                name="dato_sensible_{{ conjunto.id }}_{{ indice }}_{{ campo.id }}"
+                                {% if dato_sensible_campo %}checked{% endif %}
+                            >
+                            <span>Dato sensible</span>
+                        </label>
+                    </div>
+                </section>
+            {% endfor %}
+        </div>
+    </article>
+{% endmacro %}
+
 {% block content %}
 <section class="page-heading">
     <p class="eyebrow">Expediente {{ expediente.id }}</p>
@@ -9,8 +112,8 @@
     <p class="hero-copy">{{ expediente.tipo_nombre }}</p>
 </section>
 
-<section class="split-layout">
-    <form class="panel form-panel" method="post">
+<section class="wide-layout expediente-detail-layout">
+    <form class="panel form-panel expediente-common-form" method="post">
         <input type="hidden" name="accion" value="guardar_comunes">
         <input type="hidden" name="actuacion" value="{{ actuacion_seleccionada }}">
         <div class="section-title">
@@ -21,15 +124,12 @@
         {% if conjuntos_comunes %}
             <div class="generated-form">
                 {% for conjunto in conjuntos_comunes %}
-                    <label>
-                        {{ conjunto.nombre }}
-                        <input
-                            type="text"
-                            name="comun_{{ conjunto.id }}"
-                            value="{{ valores_comunes.get(conjunto.id, '') }}"
-                            placeholder="{{ conjunto.descripcion or 'Valor' }}"
-                        >
-                    </label>
+                    {{ dataset_input(
+                        conjunto,
+                        'comun_' ~ conjunto.id,
+                        'comun_' ~ conjunto.id,
+                        valores_comunes.get(conjunto.id, '')
+                    ) }}
                 {% endfor %}
             </div>
             <button type="submit">Guardar datos comunes</button>
@@ -75,7 +175,7 @@
 </section>
 
 {% if actuacion_seleccionada %}
-    <form class="panel form-panel detail-panel" method="post">
+    <form class="panel form-panel detail-panel expediente-actuacion-form" method="post">
         <input type="hidden" name="accion" value="guardar_actuacion">
         <input type="hidden" name="actuacion" value="{{ actuacion_seleccionada }}">
         <div class="section-title">
@@ -93,83 +193,55 @@
                     {% set valor_actual = dato.valor if dato else '' %}
                     {% set documento_marcado = dato.documento if dato else conjunto.documento %}
                     {% set dato_sensible_marcado = dato.dato_sensible if dato else conjunto.dato_sensible %}
-                    <section class="dataset-field">
-                        {% if conjunto.tipo_dato == "texto_largo" %}
-                            <div class="rich-field">
-                                <span class="field-label">{{ conjunto.nombre }}</span>
-                                <div class="rich-toolbar" aria-label="Formato del texto">
-                                    <button type="button" data-command="bold" title="Negrita">B</button>
-                                    <button type="button" data-command="italic" title="Cursiva">I</button>
-                                    <button type="button" data-command="underline" title="Subrayado">U</button>
-                                    <button type="button" data-command="insertUnorderedList" title="Lista">•</button>
-                                    <button type="button" data-command="insertOrderedList" title="Lista numerada">1.</button>
+                    {% if conjunto.repetible %}
+                        {% set entradas = dato.entradas if dato and dato.entradas else [] %}
+                        <section class="dataset-field repeatable-group" data-repeatable-group>
+                            <div class="repeatable-group-header">
+                                <div>
+                                    <h3>{{ conjunto.nombre }}</h3>
+                                    <p>{{ conjunto.descripcion or "Grupo repetible" }}</p>
                                 </div>
-                                <div
-                                    class="rich-editor"
-                                    contenteditable="true"
-                                    data-rich-editor
-                                    data-target="dato_{{ conjunto.id }}"
-                                    role="textbox"
-                                    aria-multiline="true"
-                                    aria-label="{{ conjunto.nombre }}"
-                                    data-placeholder="{{ conjunto.descripcion or 'Valor' }}"
-                                >{{ valor_actual|rich_text }}</div>
-                                <textarea
-                                    class="rich-value"
-                                    id="dato_{{ conjunto.id }}"
-                                    name="dato_{{ conjunto.id }}"
-                                >{{ valor_actual }}</textarea>
+                                <span class="pill">Repetible</span>
                             </div>
-                        {% elif conjunto.tipo_dato == "numerico" %}
-                            <label>
-                                {{ conjunto.nombre }}
-                                <input
-                                    type="number"
-                                    step="any"
-                                    name="dato_{{ conjunto.id }}"
-                                    value="{{ valor_actual }}"
-                                    placeholder="{{ conjunto.descripcion or 'Valor' }}"
-                                >
-                            </label>
-                        {% elif conjunto.tipo_dato == "fecha" %}
-                            <label>
-                                {{ conjunto.nombre }}
-                                <input
-                                    type="date"
-                                    name="dato_{{ conjunto.id }}"
-                                    value="{{ valor_actual }}"
-                                >
-                            </label>
-                        {% else %}
-                            <label>
-                                {{ conjunto.nombre }}
-                                <input
-                                    type="text"
-                                    name="dato_{{ conjunto.id }}"
-                                    value="{{ valor_actual }}"
-                                    placeholder="{{ conjunto.descripcion or 'Valor' }}"
-                                >
-                            </label>
-                        {% endif %}
-                        <div class="dataset-flags" aria-label="Características del campo">
-                            <label class="check-row compact">
-                                <input
-                                    type="checkbox"
-                                    name="documento_{{ conjunto.id }}"
-                                    {% if documento_marcado %}checked{% endif %}
-                                >
-                                <span>Documento</span>
-                            </label>
-                            <label class="check-row compact">
-                                <input
-                                    type="checkbox"
-                                    name="dato_sensible_{{ conjunto.id }}"
-                                    {% if dato_sensible_marcado %}checked{% endif %}
-                                >
-                                <span>Dato sensible</span>
-                            </label>
-                        </div>
-                    </section>
+                            <div class="repeatable-entries" data-repeatable-entries>
+                                {% if entradas %}
+                                    {% for entrada in entradas %}
+                                        {{ repeatable_entry(conjunto, entrada, entrada.indice) }}
+                                    {% endfor %}
+                                {% else %}
+                                    {{ repeatable_entry(conjunto, none, 1) }}
+                                {% endif %}
+                            </div>
+                            <template data-repeatable-template>
+                                {{ repeatable_entry(conjunto, none, "__INDEX__") }}
+                            </template>
+                            <button class="secondary-button" type="button" data-add-repeatable>
+                                Añadir entrada
+                            </button>
+                        </section>
+                    {% else %}
+                        <section class="dataset-field">
+                            {{ dataset_input(conjunto, 'dato_' ~ conjunto.id, 'dato_' ~ conjunto.id, valor_actual) }}
+                            <div class="dataset-flags" aria-label="Características del campo">
+                                <label class="check-row compact">
+                                    <input
+                                        type="checkbox"
+                                        name="documento_{{ conjunto.id }}"
+                                        {% if documento_marcado %}checked{% endif %}
+                                    >
+                                    <span>Documento</span>
+                                </label>
+                                <label class="check-row compact">
+                                    <input
+                                        type="checkbox"
+                                        name="dato_sensible_{{ conjunto.id }}"
+                                        {% if dato_sensible_marcado %}checked{% endif %}
+                                    >
+                                    <span>Dato sensible</span>
+                                </label>
+                            </div>
+                        </section>
+                    {% endif %}
                 {% endfor %}
             </div>
             <div class="form-actions document-actions">
@@ -202,7 +274,6 @@
     const phaseToggles = document.querySelectorAll("[data-phase-toggle]");
     const stageLinks = document.querySelectorAll("[data-stage-fase]");
     const stageEmptyFilter = document.querySelector("[data-stage-empty-filter]");
-    const richEditors = document.querySelectorAll("[data-rich-editor]");
 
     function updateStageVisibility() {
         if (!phaseToggles.length || !stageLinks.length) {
@@ -244,28 +315,80 @@
         target.value = empty ? "" : editor.innerHTML.trim();
     }
 
-    richEditors.forEach((editor) => {
-        syncRichEditor(editor);
-        editor.addEventListener("input", () => syncRichEditor(editor));
+    function setupRichEditors(scope = document) {
+        scope.querySelectorAll("[data-rich-editor]").forEach((editor) => {
+            if (editor.dataset.ready === "true") {
+                return;
+            }
+            editor.dataset.ready = "true";
+            syncRichEditor(editor);
+            editor.addEventListener("input", () => syncRichEditor(editor));
+        });
+    }
+
+    function syncAllRichEditors() {
+        document
+            .querySelectorAll("[data-rich-editor]")
+            .forEach((editor) => syncRichEditor(editor));
+    }
+
+    function updateRepeatableNumbers(group) {
+        group.querySelectorAll("[data-repeatable-entry]").forEach((entry, index) => {
+            const number = entry.querySelector("[data-entry-number]");
+            if (number) {
+                number.textContent = index + 1;
+            }
+        });
+    }
+
+    setupRichEditors();
+    document.querySelectorAll("[data-repeatable-group]").forEach((group) => {
+        updateRepeatableNumbers(group);
     });
 
-    document.querySelectorAll(".rich-toolbar button").forEach((button) => {
-        button.addEventListener("click", () => {
-            const field = button.closest(".rich-field");
+    document.addEventListener("click", (event) => {
+        const toolbarButton = event.target.closest(".rich-toolbar button");
+        if (toolbarButton) {
+            const field = toolbarButton.closest(".rich-field");
             const editor = field ? field.querySelector("[data-rich-editor]") : null;
             if (!editor) {
                 return;
             }
 
             editor.focus();
-            document.execCommand(button.dataset.command, false, null);
+            document.execCommand(toolbarButton.dataset.command, false, null);
             syncRichEditor(editor);
-        });
+            return;
+        }
+
+        const addButton = event.target.closest("[data-add-repeatable]");
+        if (addButton) {
+            const group = addButton.closest("[data-repeatable-group]");
+            const entries = group.querySelector("[data-repeatable-entries]");
+            const template = group.querySelector("[data-repeatable-template]");
+            const nextIndex = Date.now().toString();
+            entries.insertAdjacentHTML(
+                "beforeend",
+                template.innerHTML.replaceAll("__INDEX__", nextIndex)
+            );
+            const newEntry = entries.lastElementChild;
+            setupRichEditors(newEntry);
+            updateRepeatableNumbers(group);
+            return;
+        }
+
+        const removeButton = event.target.closest("[data-remove-repeatable]");
+        if (removeButton) {
+            const group = removeButton.closest("[data-repeatable-group]");
+            const entry = removeButton.closest("[data-repeatable-entry]");
+            entry.remove();
+            updateRepeatableNumbers(group);
+        }
     });
 
     document.querySelectorAll("form").forEach((form) => {
         form.addEventListener("submit", () => {
-            richEditors.forEach((editor) => syncRichEditor(editor));
+            syncAllRichEditors();
         });
     });
 </script>
